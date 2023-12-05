@@ -128,6 +128,8 @@ float Kpturn = 3;
 float turn = 0;
 float eK_turn = 0;
 float eK_turn_1 = 0;
+float turnerror = 0;
+float alpha = 0;
 
 // Lab View variables
 float printLV3 = 0;
@@ -754,7 +756,9 @@ __interrupt void SWI_isr(void) {
         serial_sendSCID(&SerialD, LVsenddata, 4*LVNUM_TOFROM_FLOATS + 2);
     }
 
-    target_near = xy_control(10.0 , xR_K, yR_K, x_nav, y_nav, phiR , 0.01 , 0.1);
+    //x_nav = 4;
+    //y_nav = 4;
+    target_near = xy_control(2.0 , xR_K, yR_K, x_nav, y_nav, phiR , .5 , .75);
 
     // Balance Control
     RightWheel_K = RightWheel;
@@ -798,10 +802,10 @@ __interrupt void SWI_isr(void) {
     WhlDiff = LeftWheel - RightWheel;
     WhlDiff_K = WhlDiff;
     turn_angle_K = turn_angle;
-    turnref_K = turnref;
+    turnref_K = -1* turn_forxy;
 
     turn_angle_K = -1*turn_forxy;
-    //turn_angle_K = turn_angle_K_1 + (turnref_K + turnref_K_1)*0.002;
+    //turn_angle_K = alpha;//turn_angle_K_1 + (turnref_K + turnref_K_1)*0.002;
 
     vel_WhlDiff_K = 0.3333*(vel_WhlDiff_K_1) + 166.667*(WhlDiff_K) - 166.667*(WhlDiff_K_1);
 
@@ -839,7 +843,7 @@ __interrupt void SWI_isr(void) {
     // Speed Control
 
     avgSpeed = (0.5)*(vel_Left_K + vel_Right_K);
-    errorSpeed = (vref_forxy/Rwh) - avgSpeed;
+    errorSpeed = 0;//(vref_forxy/Rwh) - avgSpeed;
     errorSpeed_K = errorSpeed;
 
     intSpeed_K = intSpeed_K_1 + (errorSpeed_K + errorSpeed_K_1)*(0.002);
@@ -1446,7 +1450,7 @@ __interrupt void ADCA_ISR (void)
 
 float my_atanf(float dy, float dx)
 {
-    float ang;
+    float ang = 0;
 
     if (fabsf(dy) <= 0.001F) {
         if (dx >= 0.0F) {
@@ -1469,14 +1473,14 @@ float my_atanf(float dy, float dx)
 int xy_control(float turn_thres, float x_pos,float y_pos,float x_desired,float y_desired,
                 float thetaabs,float target_radius,float target_radius_near)
 {
-    float dx,dy,alpha;
+    float dx = 0;
+    float dy = 0;
     float dist = 0.0F;
-    float dir;
-    float theta;
+    float dir = 0;
+    float theta = 0;
     int target_near = FALSE;
-    float turnerror = 0;
 
-        // calculate theta (current heading) between -PI and PI
+    // calculate theta (current heading) between -PI and PI
     if (thetaabs > PI) {
         theta = thetaabs - 2.0*PI*floorf((thetaabs+PI)/(2.0*PI));
     } else if (thetaabs < -PI) {
@@ -1494,48 +1498,57 @@ int xy_control(float turn_thres, float x_pos,float y_pos,float x_desired,float y
     alpha = my_atanf(dy,dx);
 
     // calculate turn error
-    //  turnerror = theta - alpha;  old way using left hand coordinate system.
+    // turnerror = theta - alpha;  old way using left hand coordinate system.
     turnerror = alpha - theta;
 
     // check for shortest path
     if (fabsf(turnerror + 2.0*PI) < fabsf(turnerror)) turnerror += 2.0*PI;
     else if (fabsf(turnerror - 2.0*PI) < fabsf(turnerror)) turnerror -= 2.0*PI;
 
-    if (dist < target_radius_near) {
+    if (dist<target_radius)
+    {
+        vref_forxy = 0;
+        turnerror = 0;
+        return(TRUE);
+    }
+
+    if (dist < target_radius_near)
+    {
         target_near = TRUE;
         // Arrived to the target's (X,Y)
-        if (dist < target_radius) {
-            dir = 0.0F;
-            turnerror = 0.0F;
-        } else {
-            // if we overshot target, we must change direction. This can cause the robot to bounce back and forth when
-            // remaining at a point.
-            if (fabsf(turnerror) > HALFPI) {
-                dir = -dir;
-            }
-            turnerror = 0;
+        // if we overshot target, we must change direction. This can cause the robot to bounce back and forth when
+        // remaining at a point.
+        if (fabsf(turnerror) > HALFPI) {
+            turn_forxy = 1*turnerror;
+            vref_forxy = 0;
+            return(TRUE);
         }
+        //turnerror = 0;
     } else {
         target_near = FALSE;
+    }
+
+    if (fabsf(turn_forxy) > turn_thres) {
+        vref_forxy = 0;
+        return(TRUE);
     }
 
     // vref is 1 tile/sec; but slower when close to target.
     vref_forxy = dir*min_val(dist,1);
 
-    if (fabsf(vref_forxy) > 0.5) {
+   /*  if (fabsf(vref_forxy) < 0.5) {
         // if robot 1 tile away from target use a scaled KP value.
-        turn_forxy = vref_forxy*10*turnerror;
+        turn_forxy = vref_forxy*2*turnerror;
     } else {
         // normally use a Kp gain of 2
         turn_forxy = 2*turnerror;
-    }
-
+    } */
+    turn_forxy = 1*turnerror;
     // This helps with unbalanced wheel slipping.  If turn value greater than
     // turn_thres then just spin in place
-    if (fabsf(turn_forxy) > turn_thres) {
-        vref_forxy = 0;
-    }
+
     return(target_near);
+
 }
 
 float min_val(float a, float b)
