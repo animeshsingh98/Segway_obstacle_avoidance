@@ -801,10 +801,10 @@ __interrupt void SWI_isr(void) {
     // Turn Control
     WhlDiff = LeftWheel - RightWheel;
     WhlDiff_K = WhlDiff;
-    turn_angle_K = turn_angle;
-    turnref_K = -1* turn_forxy;
+    //turn_angle_K = turn_angle;
+    //turnref_K = -1* turn_forxy;
 
-    turn_angle_K = -1*turn_forxy;
+    turn_angle_K = -1*alpha*Wr/Rwh;
     //turn_angle_K = alpha;//turn_angle_K_1 + (turnref_K + turnref_K_1)*0.002;
 
     vel_WhlDiff_K = 0.3333*(vel_WhlDiff_K_1) + 166.667*(WhlDiff_K) - 166.667*(WhlDiff_K_1);
@@ -843,7 +843,7 @@ __interrupt void SWI_isr(void) {
     // Speed Control
 
     avgSpeed = (0.5)*(vel_Left_K + vel_Right_K);
-    errorSpeed = 0;//(vref_forxy/Rwh) - avgSpeed;
+    errorSpeed = (vref_forxy/Rwh) - avgSpeed;
     errorSpeed_K = errorSpeed;
 
     intSpeed_K = intSpeed_K_1 + (errorSpeed_K + errorSpeed_K_1)*(0.002);
