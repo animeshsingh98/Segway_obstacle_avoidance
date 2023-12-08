@@ -23,7 +23,7 @@
 #define PI          3.1415926535897932384626433832795
 #define TWOPI       6.283185307179586476925286766559
 #define HALFPI      1.5707963267948966192313216916398
-#define ANG_OFFSET  HALFPI
+#define ANG_OFFSET  HALFPI/2
 #define DIST_OFFSET 2.0
 // The Launchpad's CPU Frequency set to 200 you should not change this value
 #define LAUNCHPAD_CPU_FREQUENCY 200
