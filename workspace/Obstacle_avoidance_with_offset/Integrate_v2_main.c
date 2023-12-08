@@ -23,6 +23,8 @@
 #define PI          3.1415926535897932384626433832795
 #define TWOPI       6.283185307179586476925286766559
 #define HALFPI      1.5707963267948966192313216916398
+#define ANG_OFFSET  HALFPI
+#define DIST_OFFSET 2.0
 // The Launchpad's CPU Frequency set to 200 you should not change this value
 #define LAUNCHPAD_CPU_FREQUENCY 200
 #define FALSE 0
@@ -259,6 +261,7 @@ float x_nav = 0;
 float y_nav = 0;
 float x_nav_old = 0;
 float y_nav_old = 0;
+float phiR_old = 0;
 int16_t target_near = 0;
 int16_t target_near_offset = 0;
 
@@ -714,8 +717,8 @@ __interrupt void SWI_isr(void) {
         DataToLabView.floatData[3] = yk2;
         DataToLabView.floatData[4] = yk3;
         DataToLabView.floatData[5] = yk4;
-        DataToLabView.floatData[6] = (float)numSWIcalls*4.0;
-        DataToLabView.floatData[7] = (float)numSWIcalls*5.0;
+        DataToLabView.floatData[6] = alpha;
+        DataToLabView.floatData[7] = machine_state;
         LVsenddata[0] = '*'; // header for LVdata
         LVsenddata[1] = '$';
         for (int i=0;i<LVNUM_TOFROM_FLOATS*4;i++) {
@@ -755,7 +758,7 @@ __interrupt void SWI_isr(void) {
     case 1:
         //Left Turn
         //alpha = alpha + PI*(10/180);   //KH & LJM: yk3 is the middle IR sensor
-        target_near_offset = xy_control(2.0 , xR_K, yR_K,x_nav_old + DIST_OFFSET*cos(phiR+ANG_OFFSET) , y_nav_old + DIST_OFFSET*sin(phiR+ANG_OFFSET), phiR , 0.5, 0.75);//KH & LJM: Halt while turning away from the wall
+        target_near_offset = xy_control(2.0 , xR_K, yR_K,x_nav_old + DIST_OFFSET*cos(phiR_old+ANG_OFFSET) , y_nav_old + DIST_OFFSET*sin(phiR_old+ANG_OFFSET), phiR , 0.5, 0.75);//KH & LJM: Halt while turning away from the wall
         if (target_near_offset) {
             machine_state = 3;
         }
@@ -763,7 +766,7 @@ __interrupt void SWI_isr(void) {
     case 2:
         //Right Turn
         //alpha = alpha - PI*(10/180);   // KH & LJM: yk4 is the right IR sensor
-        target_near_offset = xy_control(2.0 , xR_K, yR_K,x_nav_old + DIST_OFFSET*cos(phiR-ANG_OFFSET) , y_nav_old + DIST_OFFSET*sin(phiR-ANG_OFFSET), phiR , 0.5, 0.75);
+        target_near_offset = xy_control(2.0 , xR_K, yR_K,x_nav_old + DIST_OFFSET*cos(phiR_old-ANG_OFFSET) , y_nav_old + DIST_OFFSET*sin(phiR_old-ANG_OFFSET), phiR , 0.5, 0.75);
         //vref_forxy = 0;                           //KH & LJM: Halt while turning away from the wall
         if (target_near_offset) {
             machine_state = 3;
@@ -775,12 +778,14 @@ __interrupt void SWI_isr(void) {
         {
             x_nav_old = xR_K;
             y_nav_old = yR_K;
+            phiR_old = phiR;
             machine_state = 1;
         }
         else if (yk2 < right_turn_Start_threshold)
         {
             x_nav_old = xR_K;
             y_nav_old = yR_K;
+            phiR_old = phiR;
             machine_state = 2;
         }
         break;
