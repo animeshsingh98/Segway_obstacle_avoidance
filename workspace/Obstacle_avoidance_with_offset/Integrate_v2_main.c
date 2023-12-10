@@ -23,6 +23,8 @@
 #define PI          3.1415926535897932384626433832795
 #define TWOPI       6.283185307179586476925286766559
 #define HALFPI      1.5707963267948966192313216916398
+#define ANG_OFFSET  HALFPI/2
+#define DIST_OFFSET 2.0
 // The Launchpad's CPU Frequency set to 200 you should not change this value
 #define LAUNCHPAD_CPU_FREQUENCY 200
 #define FALSE 0
@@ -121,7 +123,6 @@ float eK_turn = 0;
 float eK_turn_1 = 0;
 float turnerror = 0;
 float alpha = 0;
-float alpha_old = 0;
 
 // Lab View variables
 float printLV3 = 0;
@@ -260,6 +261,7 @@ float x_nav = 0;
 float y_nav = 0;
 float x_nav_old = 0;
 float y_nav_old = 0;
+float phiR_old = 0;
 int16_t target_near = 0;
 int16_t target_near_offset = 0;
 
@@ -267,9 +269,6 @@ int16_t target_near_offset = 0;
 float left_obs_det = 0;
 float center_obs_det = 0;
 float right_obs_det = 0;
-float alpha_turn_left= 0;
-float alpha_turn_right = 0;
-float count_turn = 0;
 
 // KH & LJM: Initialization of variables for Right Wall Following
 int16_t right_wall_follow_state = 2; //By default, do the right wall follow which is case 2
@@ -289,8 +288,8 @@ float yk4 = 0;
 float dist_IR_ADCINA2 = 0;
 float dist_IR_ADCINA3 = 0;
 float dist_IR_ADCINA4 = 0;
-float left_turn_Start_threshold = 2.3;
-float right_turn_Start_threshold = 2.3;
+float left_turn_Start_threshold = 2.0;
+float right_turn_Start_threshold = 2.0;
 float left_turn_Stop_threshold = 2.3;
 float right_turn_Stop_threshold = 2.3;
 
@@ -747,53 +746,30 @@ __interrupt void SWI_isr(void) {
 
     if (machine_state==3)
     {
-        count_turn = 0;
         // Sending the current position to calculate the next control inputs
         target_near = xy_control(2.0 , xR_K, yR_K, x_nav, y_nav, phiR , 0.5, 0.75);
-        alpha_old = alpha;
         //x_nav_old = x_nav;
         //y_nav_old = y_nav;
     }
 
-    alpha_turn_left = alpha_old + PI*(10.0/180.0);
-    alpha_turn_right = alpha_old - PI*(10.0/180.0);
+
     // State Machine
     switch (machine_state) {
     case 1:
-        //Left Turn0
-        alpha = alpha_turn_left;   //KH & LJM: yk3 is the middle IR sensor
-        vref_forxy = 0.5; //KH & LJM: Halt while turning away from the wall
-        count_turn = count_turn + 1;
-        if (count_turn > 100)
-        {
-            if (yk4 > left_turn_Stop_threshold) {
-                machine_state = 3;
-            }
-/*
         //Left Turn
         //alpha = alpha + PI*(10/180);   //KH & LJM: yk3 is the middle IR sensor
-        target_near_offset = xy_control(2.0 , xR_K, yR_K,x_nav_old + DIST_OFFSET*cos(phiR+ANG_OFFSET) , y_nav_old + DIST_OFFSET*sin(phiR+ANG_OFFSET), phiR , 0.5, 0.75);//KH & LJM: Halt while turning away from the wall
+        target_near_offset = xy_control(2.0 , xR_K, yR_K,x_nav_old + DIST_OFFSET*cos(phiR_old+ANG_OFFSET) , y_nav_old + DIST_OFFSET*sin(phiR_old+ANG_OFFSET), phiR , 0.5, 0.75);//KH & LJM: Halt while turning away from the wall
         if (target_near_offset) {
             machine_state = 3;
-        }*/
+        }
         break;
     case 2:
         //Right Turn
-        alpha = alpha_turn_right;   // KH & LJM: yk4 is the right IR sensor
-        vref_forxy = 0.5;                           //KH & LJM: Halt while turning away from the wall
-
- = count_turn + 1;
-        if(count_turn > 100){
-            if (yk2 > right_turn_Stop_threshold) {
-                machine_state = 3;
-            }
-/*
         //alpha = alpha - PI*(10/180);   // KH & LJM: yk4 is the right IR sensor
-        target_near_offset = xy_control(2.0 , xR_K, yR_K,x_nav_old + DIST_OFFSET*cos(phiR-ANG_OFFSET) , y_nav_old + DIST_OFFSET*sin(phiR-ANG_OFFSET), phiR , 0.5, 0.75);
+        target_near_offset = xy_control(2.0 , xR_K, yR_K,x_nav_old + DIST_OFFSET*cos(phiR_old-ANG_OFFSET) , y_nav_old + DIST_OFFSET*sin(phiR_old-ANG_OFFSET), phiR , 0.5, 0.75);
         //vref_forxy = 0;                           //KH & LJM: Halt while turning away from the wall
         if (target_near_offset) {
             machine_state = 3;
-*/
         }
         break;
     case 3:
@@ -802,13 +778,14 @@ __interrupt void SWI_isr(void) {
         {
             x_nav_old = xR_K;
             y_nav_old = yR_K;
+            phiR_old = phiR;
             machine_state = 1;
-
         }
         else if (yk2 < right_turn_Start_threshold)
         {
             x_nav_old = xR_K;
             y_nav_old = yR_K;
+            phiR_old = phiR;
             machine_state = 2;
         }
         break;
@@ -954,7 +931,7 @@ __interrupt void cpu_timer2_isr(void)
 // SPI interrupt
 __interrupt void SPIB_isr(void)
 {
-    countSPIB_ISR++;
+    countSPIB_ISR ++;
 
     dummy = SpibRegs.SPIRXBUF; // Read first receive value which is not useful for us as  they are related to INIT_Status
     Accel_X_Raw = SpibRegs.SPIRXBUF; // Accelerometer X data
