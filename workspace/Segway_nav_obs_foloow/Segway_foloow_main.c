@@ -828,7 +828,7 @@ __interrupt void SWI_isr(void) {
         }
         break;
     case 4: // Delay and wall/position option
-        vref_forxy = 1;
+        vref_forxy = 0.5;
         if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
         {
             right_count++;
@@ -846,7 +846,7 @@ __interrupt void SWI_isr(void) {
                 machine_state = 1;           // Then go to left_wall_following_mode
             }
         }
-        if(delay_count > 125){ //After 0.5 seconds
+        if(delay_count > 500){ //After 0.5 seconds
            delay_count = 0;
            right_count = 0;
            left_count = 0;
