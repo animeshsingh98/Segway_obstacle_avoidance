@@ -707,9 +707,9 @@ __interrupt void SWI_isr(void) {
         NewLVData = 0;
         //x_nav = fromLVvalues[0];
         //y_nav = fromLVvalues[1];
-        left_obs_det = fromLVvalues[2];
-        center_obs_det = fromLVvalues[3];
-        right_obs_det = fromLVvalues[4];
+        printLV3 = fromLVvalues[2];
+        printLV4 = fromLVvalues[3];
+        printLV5 = fromLVvalues[4];
         printLV6 = fromLVvalues[5];
         x_nav = fromLVvalues[6];
         y_nav = fromLVvalues[7];
@@ -812,7 +812,7 @@ __interrupt void SWI_isr(void) {
         if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
         {
             right_count++;
-            if (right_count == 100){                // Ensuring constant distance reading instead of noise
+            if (right_count == 25){                // Ensuring constant distance reading instead of noise
                  alpha_K_1 = alpha;
                 machine_state = 2;               // Then go to right_wall_following mode
             }
@@ -821,7 +821,7 @@ __interrupt void SWI_isr(void) {
         else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
         {
             left_count++;
-            if (left_count == 100){                // Ensuring constant distance reading instead of noise
+            if (left_count == 25){                // Ensuring constant distance reading instead of noise
                 alpha_K_1 = alpha;
                 machine_state = 1;           // Then go to left_wall_following_mode
             }
@@ -853,7 +853,6 @@ __interrupt void SWI_isr(void) {
            machine_state = 3;
         }
         delay_count++;
-
     }
 
     gyro_value_K = gyro_value;
