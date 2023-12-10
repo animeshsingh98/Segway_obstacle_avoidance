@@ -21,6 +21,7 @@
 #include "fpu32/fpu_rfft.h"
 
 #define PI          3.1415926535897932384626433832795
+#define PI_INV      0.318309886183790671537767526745
 #define TWOPI       6.283185307179586476925286766559
 #define HALFPI      1.5707963267948966192313216916398
 // The Launchpad's CPU Frequency set to 200 you should not change this value
@@ -267,6 +268,9 @@ float right_obs_det = 0;
 float alpha_turn_left= 0;
 float alpha_turn_right = 0;
 float count_turn = 0;
+float right_count = 0;
+float left_count = 0;
+float delay_count = 0;
 
 // KH & LJM: Initialization of variables for Right Wall Following
 int16_t right_wall_follow_state = 2; //By default, do the right wall follow which is case 2
@@ -286,16 +290,20 @@ float yk4 = 0;
 float dist_IR_ADCINA2 = 0;
 float dist_IR_ADCINA3 = 0;
 float dist_IR_ADCINA4 = 0;
-float left_turn_Start_threshold = 2.3;
-float right_turn_Start_threshold = 2.3;
-float left_turn_Stop_threshold = 2.3;
-float right_turn_Stop_threshold = 2.3;
+float left_wall_Start_threshold = 2.2;
+float right_wall_Start_threshold = 2.2;
 
-float forward_velocity = 2.0;
-float Kp_front_wall = 3.0;
-float Kp_right_wall = 2.5;
-float ref_right_wall = 2.2;
+float forward_velocity = 0.5;
+float Kp_right_front_wall = 0.8;
+float Kp_left_front_wall = 1.1;
+float Kp_left_wall = 1.2;
+float Kp_right_wall = 1.2;
+float ref_right_wall = 2.3;
+float ref_left_wall = 2.6;
 uint16_t machine_state = 3;
+float left_turn_Start_threshold = 2.0;
+float left_turn_Stop_threshold = 2.3;
+float alpha_K_1 = 0;
 
 uint32_t ADCA_count = 0;
 void setDACA(float dacouta0) {
@@ -697,14 +705,14 @@ __interrupt void SWI_isr(void) {
     //pks11// lab6// ex5
     if (NewLVData == 1) {
         NewLVData = 0;
-        x_nav = fromLVvalues[0];
-        y_nav = fromLVvalues[1];
+        //x_nav = fromLVvalues[0];
+        //y_nav = fromLVvalues[1];
         left_obs_det = fromLVvalues[2];
         center_obs_det = fromLVvalues[3];
         right_obs_det = fromLVvalues[4];
         printLV6 = fromLVvalues[5];
-        printLV7 = fromLVvalues[6];
-        printLV8 = fromLVvalues[7];
+        x_nav = fromLVvalues[6];
+        y_nav = fromLVvalues[7];
     }
 
     if((numSWIcalls%62) == 0) { // change to the counter variable of you selected 4ms. timer : //pks11 // ex5 We want to communicate at 248 ms
@@ -744,51 +752,108 @@ __interrupt void SWI_isr(void) {
     if (machine_state==3)
     {
         count_turn = 0;
+
         // Sending the current position to calculate the next control inputs
         target_near = xy_control(2.0 , xR_K, yR_K, x_nav, y_nav, phiR , 0.5, 0.75);
-        alpha_old = alpha;
     }
 
-    alpha_turn_left = alpha_old + PI*(10.0/180.0);
-    alpha_turn_right = alpha_old - PI*(10.0/180.0);
     // State Machine
     switch (machine_state) {
-    case 1:
-        //Left Turn0
-        alpha = alpha_turn_left;   //KH & LJM: yk3 is the middle IR sensor
-        vref_forxy = 0.5; //KH & LJM: Halt while turning away from the wall
-        count_turn = count_turn + 1;
-        if (count_turn > 100)
+    case 1: // Left_wall_following
+        if (yk3 > left_wall_Start_threshold){
+
+            // Turn towards the wall
+            turnref = -1*Kp_left_wall*(ref_left_wall - yk2);   // KH & LJM: yk4 is the right IR sensor
+            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+            alpha_K_1 = alpha;
+            turnref_K_1 = turnref;
+            vref_forxy = forward_velocity;
+        } else if(yk3 < left_wall_Start_threshold) {
+            // Turn away from the wall
+            turnref = -1*Kp_left_front_wall*(3.1 - yk3);   //KH & LJM: yk3 is the middle IR sensor
+            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+            alpha_K_1 = alpha;
+            turnref_K_1 = turnref;
+            vref_forxy = 0.0;                           //KH & LJM: Halt while turning away from the wall
+        }
+        //count_turn++;
+        if(yk2 > 2.8){
+            left_count = 0;                             // Resetting left_count to stop constant machine state 1
+            alpha = alpha - PI*15.0/180;
+            machine_state = 4;
+        }
+        break;
+    case 2: // Right_wall_following
+        if (yk3 > right_wall_Start_threshold){
+            // Turn towards the wall
+            turnref = Kp_right_wall*(ref_right_wall - yk4);   // KH & LJM: yk4 is the right IR sensor
+            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+            alpha_K_1 = alpha;
+            turnref_K_1 = turnref;
+            vref_forxy = forward_velocity;
+        } else if (yk3 < right_wall_Start_threshold){
+            // Turn away from the wall
+            turnref = Kp_right_front_wall*(3.1 - yk3);   //KH & LJM: yk3 is the middle IR sensor
+            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+            alpha_K_1 = alpha;
+            turnref_K_1 = turnref;
+            vref_forxy = 0.0;                           //KH & LJM: Halt while turning away from the wall
+
+        }
+        //count_turn++;
+        if(yk4 > 2.8){
+            right_count = 0;                            // Resetting right_count to stop constant machine state 2
+            alpha = alpha + PI*15.0/180;
+            machine_state = 4;
+
+        }
+        break;
+    case 3: // Navigation
+        if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
         {
-            if (yk4 > left_turn_Stop_threshold) {
-                machine_state = 3;
+            right_count++;
+            if (right_count == 100){                // Ensuring constant distance reading instead of noise
+                 alpha_K_1 = alpha;
+                machine_state = 2;               // Then go to right_wall_following mode
+            }
+
+        }
+        else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
+        {
+            left_count++;
+            if (left_count == 100){                // Ensuring constant distance reading instead of noise
+                alpha_K_1 = alpha;
+                machine_state = 1;           // Then go to left_wall_following_mode
             }
         }
         break;
-    case 2:
-        //Right Turn
-        alpha = alpha_turn_right;   // KH & LJM: yk4 is the right IR sensor
-        vref_forxy = 0.5;                           //KH & LJM: Halt while turning away from the wall
+    case 4: // Delay and wall/position option
+        vref_forxy = 1;
+        if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
+        {
+            right_count++;
+            if (right_count == 60){                // Ensuring constant distance reading instead of noise
+                 alpha_K_1 = alpha;
+                machine_state = 2;               // Then go to right_wall_following mode
+            }
 
- = count_turn + 1;
-        if(count_turn > 100){
-            if (yk2 > right_turn_Stop_threshold) {
-                machine_state = 3;
+        }
+        else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
+        {
+            left_count++;
+            if (left_count == 60){                // Ensuring constant distance reading instead of noise
+                alpha_K_1 = alpha;
+                machine_state = 1;           // Then go to left_wall_following_mode
             }
         }
-        break;
-    case 3:
-        // Navigation
-        if (yk4 < left_turn_Start_threshold)
-        {
-            machine_state = 1;
+        if(delay_count > 125){ //After 0.5 seconds
+           delay_count = 0;
+           right_count = 0;
+           left_count = 0;
+           machine_state = 3;
+        }
+        delay_count++;
 
-        }
-        else if (yk2 < right_turn_Start_threshold)
-        {
-            machine_state = 2;
-        }
-        break;
     }
 
     gyro_value_K = gyro_value;
@@ -826,6 +891,10 @@ __interrupt void SWI_isr(void) {
     errorDiff_K = errorDiff;
 
     intDiff_K = intDiff_K_1 + (errorDiff_K + errorDiff_K_1)*(0.002);
+    if(machine_state == 1 || machine_state == 2) {
+        Kp_turn = 5.0;
+        Ki_turn = 0.1;
+    }
     ubalturn = Kp_turn*(errorDiff_K) + Ki_turn*(intDiff_K) - Kd_turn*(vel_WhlDiff_K);
 
     if(ubalturn > 4){

@@ -25,8 +25,6 @@
 #define HALFPI      1.5707963267948966192313216916398
 // The Launchpad's CPU Frequency set to 200 you should not change this value
 #define LAUNCHPAD_CPU_FREQUENCY 200
-#define FALSE 0
-#define TRUE 1
 #define SIZEOFARRAY 22
 
 // Interrupt Service Routines predefinition
@@ -34,29 +32,39 @@ __interrupt void cpu_timer0_isr(void);
 __interrupt void cpu_timer1_isr(void);
 __interrupt void cpu_timer2_isr(void);
 __interrupt void SWI_isr(void);
-__interrupt void SPIB_isr(void);
-__interrupt void ADCA_ISR (void);
 
-// Function Definitions
+//pks11 ex1
+__interrupt void SPIB_isr(void);
+
+//pks11/ ex3
 void setupSpib(void);
+
+//pks11 //lab6 // ex1 // to avoid warnings
 void init_eQEPs(void);
 float readEncLeft(void);
 float readEncRight(void);
 void setEPWM2A(float controleffort);
 void setEPWM2B(float controleffort);
-float min_val(float a, float b);
-int xy_control(float turn_thres, float x_pos,float y_pos,float x_desired,float y_desired,
-               float thetaabs,float target_radius,float target_radius_near);
 
 // Count variables
 uint32_t numTimer0calls = 0;
-uint32_t numTimer1calls = 0;
+uint32_t numTimer1calls = 0; //pks11 // ex5
 uint32_t numSWIcalls = 0;
 extern uint32_t numRXA;
 uint16_t UARTPrint = 0;
 uint16_t LEDdisplaynum = 0;
 
-// IMU readings
+//pks11//ex1/
+int16_t spivalue1 = 0;
+int16_t spivalue2 = 0;
+int16_t spivalue3 = 0;
+//pks11 // ex2
+int16_t pwmValue = 0;
+int16_t direction = 1;
+float adc_volt1 = 0;
+float adc_volt2 = 0;
+
+//pks11/ex3
 int16_t dummy = 0;
 int16_t Accel_X_Raw = 0;
 int16_t Accel_Y_Raw = 0;
@@ -73,7 +81,7 @@ float Gyro_X = 0;
 float Gyro_Y = 0;
 float Gyro_Z = 0;
 
-// Wheel Variables
+//pks11 // lab6 // ex1
 float LeftWheel = 0;
 float RightWheel = 0;
 float LeftWheel_update = 0;
@@ -99,7 +107,7 @@ float PosRight_K_1 = 0 ; //setting up global position for left at time K-1
 float  VLeftK = 0;
 float  VRightK = 0;
 
-// Balance Control
+//pks11 // controllers
 float Kp = 3;
 float Ki = 25;
 float Vref = 1;
@@ -113,17 +121,13 @@ float IK_Right = 0;
 float IK_1_Right = 0;
 float eK_Left_1 = 0;
 float eK_Right_1 = 0;
-
-// Turn Control
+//pks11 setting up turn
 float Kpturn = 3;
 float turn = 0;
 float eK_turn = 0;
 float eK_turn_1 = 0;
-float turnerror = 0;
-float alpha = 0;
-float alpha_old = 0;
 
-// Lab View variables
+//pks11 // ex5
 float printLV3 = 0;
 float printLV4 = 0;
 float printLV5 = 0;
@@ -140,7 +144,7 @@ extern char LVsenddata[LVNUM_TOFROM_FLOATS*4+2];
 extern uint16_t newLinuxCommands;
 extern float LinuxCommands[CMDNUM_FROM_FLOATS];
 
-// Wheel
+//pks11 //ex6
 float Rwh = 0.19460; //feet //Radius of Wheel
 float Wr = 0.56759; //feet //width of robot
 float xR_K = 0; //feet // Robot pose X coordinate
@@ -160,7 +164,12 @@ float xR_K_1 = 0;
 float yR_K_1 = 0;
 
 
-// IMU data filter
+//pks11 //Lab7
+__interrupt void ADCA_ISR (void);
+float adc0Volt = 0;
+float adc1Volt = 0;
+float adca0result = 0;
+float adca1result = 0;
 int count_ISR = 0;
 float accelx = 0;
 float accely = 0;
@@ -172,6 +181,7 @@ float LeftWheel_New = 0;
 float RightWheel_New = 0;
 int countSPIB_ISR =0;
 
+//pks11 // ex7
 // Needed global Variables
 float accelx_offset = 0;
 float accely_offset = 0;
@@ -179,7 +189,7 @@ float accelz_offset = 0;
 float gyrox_offset = 0;
 float gyroy_offset = 0;
 float gyroz_offset = 0;
-float accelzBalancePoint = -.64;
+float accelzBalancePoint = -.64; //pks11// robot is drifiting backwards so I need to put my setling point(equlibrium) point to less negative(Hence -0.76 to -0.71)
 int16 IMU_data[9];
 uint16_t temp=0;
 int16_t doneCal = 0;
@@ -187,9 +197,10 @@ float tilt_value = 0;
 float tilt_array[4] = {0, 0, 0, 0};
 float gyro_value = 0;
 float gyro_array[4] = {0, 0, 0, 0};
+//float LeftWheel = 0;
+//float RightWheel = 0;
 float LeftWheelArray[4] = {0,0,0,0};
 float RightWheelArray[4] = {0,0,0,0};
-
 // Kalman Filter vars
 float T = 0.001; //sample rate, 1ms
 float Q = 0.01; // made global to enable changing in runtime
@@ -207,6 +218,10 @@ float vel_Left_K = 0;
 float vel_Left_K_1 = 0;
 float vel_Right_K = 0;
 float vel_Right_K_1 = 0;
+//float LeftWheel_K = 0;
+//float LeftWheel_K_1 = 0;
+//float RightWheel_K = 0;
+//float RightWheel_K_1 = 0;
 float gyrorate_dot_K = 0;
 float gyrorate_dot_K_1 = 0;
 float gyro_value_K = 0;
@@ -217,7 +232,7 @@ float K2 = -4.5;
 float K3 = -1.1;
 float K4 = -0.1;
 
-// Balance and Turn control variables
+//pks11 //lab7 ex4
 float WhlDiff = 0;
 float WhlDiff_K = 0;
 float WhlDiff_K_1 = 0;
@@ -253,21 +268,6 @@ float intSpeed_K =0;
 float intSpeed_K_1 = 0;
 float forwardback_command = 0;
 
-// XY control
-float vref_forxy = 0;
-float turn_forxy = 0;
-float x_nav = 0;
-float y_nav = 0;
-int target_near = 0;
-
-// Obstacle
-float left_obs_det = 0;
-float center_obs_det = 0;
-float right_obs_det = 0;
-float alpha_turn_left= 0;
-float alpha_turn_right = 0;
-float count_turn = 0;
-
 // KH & LJM: Initialization of variables for Right Wall Following
 int16_t right_wall_follow_state = 2; //By default, do the right wall follow which is case 2
 float c[SIZEOFARRAY]={   -2.3890045153263611e-03,    -3.3150057635348224e-03,    -4.6136191242627002e-03,    -4.1659855521681268e-03,    1.4477422497795286e-03, 1.5489414225159667e-02, 3.9247886844071371e-02, 7.0723964095458614e-02, 1.0453473887246176e-01, 1.3325672639406205e-01, 1.4978314227429904e-01, 1.4978314227429904e-01, 1.3325672639406205e-01, 1.0453473887246176e-01, 7.0723964095458614e-02, 3.9247886844071371e-02, 1.5489414225159667e-02, 1.4477422497795286e-03, -4.1659855521681268e-03,    -4.6136191242627002e-03,    -3.3150057635348224e-03,    -2.3890045153263611e-03};
@@ -286,16 +286,13 @@ float yk4 = 0;
 float dist_IR_ADCINA2 = 0;
 float dist_IR_ADCINA3 = 0;
 float dist_IR_ADCINA4 = 0;
-float left_turn_Start_threshold = 2.3;
-float right_turn_Start_threshold = 2.3;
+float left_turn_Start_threshold = 2.0;
 float left_turn_Stop_threshold = 2.3;
-float right_turn_Stop_threshold = 2.3;
 
 float forward_velocity = 2.0;
 float Kp_front_wall = 3.0;
 float Kp_right_wall = 2.5;
 float ref_right_wall = 2.2;
-uint16_t machine_state = 3;
 
 uint32_t ADCA_count = 0;
 void setDACA(float dacouta0) {
@@ -319,6 +316,7 @@ void setDACC(float dacouta2) {
     if (DACOutInt < 0) DACOutInt = 0;
     DaccRegs.DACVALS.bit.DACVALS = DACOutInt;
 }
+
 
 void main(void)
 {
@@ -625,20 +623,82 @@ void main(void)
     //ADCA
     //PKS11/
     //EX3 : Do not forget to remeber we are gonna use ADCINA2 (CHSEL : 2) and ADCINA3 (chsel : 3)
-    AdcaRegs.ADCSOC0CTL.bit.CHSEL = 2; // ADCINA2 : SOC0 will convert Channel you choose Does not have to be A0
+    AdcaRegs.ADCSOC0CTL.bit.CHSEL = 2; //SOC0 will convert Channel you choose Does not have to be A0, uses 2 for IR sensor 1, pin 29
     AdcaRegs.ADCSOC0CTL.bit.ACQPS = 99; //sample window is acqps + 1 SYSCLK cycles = 500ns
     AdcaRegs.ADCSOC0CTL.bit.TRIGSEL = 13;// EPWM5 ADCSOCA or another trigger you choose will trigger SOC0
-    AdcaRegs.ADCSOC1CTL.bit.CHSEL = 3; //ADCINA3 : SOC1 will convert Channel you choose Does not have to be A1
+    AdcaRegs.ADCSOC1CTL.bit.CHSEL = 3; //SOC1 will convert Channel you choose Does not have to be A1, uses 3 for IR sensor 2, pin 26
     AdcaRegs.ADCSOC1CTL.bit.ACQPS = 99; //sample window is acqps + 1 SYSCLK cycles = 500ns
     AdcaRegs.ADCSOC1CTL.bit.TRIGSEL = 13;// EPWM5 ADCSOCA or another trigger you choose will trigger SOC1
-    AdcaRegs.ADCSOC2CTL.bit.CHSEL = 4; //ADCINA3 : SOC2 will convert Channel you choose Does not have to be A1
+    AdcaRegs.ADCSOC2CTL.bit.CHSEL = 4; //SOC2 will convert Channel you choose Does not have to be A1, uses 4 for IR sensor 3, pin 69
     AdcaRegs.ADCSOC2CTL.bit.ACQPS = 99; //sample window is acqps + 1 SYSCLK cycles = 500ns
     AdcaRegs.ADCSOC2CTL.bit.TRIGSEL = 13;// EPWM5 ADCSOCA or another trigger you choose will trigger SOC1
     AdcaRegs.ADCINTSEL1N2.bit.INT1SEL = 2; //set to last SOC that is converted and it will set INT1 flag ADCA1
     AdcaRegs.ADCINTSEL1N2.bit.INT1E = 1; //enable INT1 flag
-    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is cleared
+    AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //make sure INT1 flag is clearedred
 
     EDIS;
+
+    //pks11 // lab5/ ex1 // copy -pasting the code to setup SPIB
+
+    //    GPIO_SetupPinMux(9, GPIO_MUX_CPU1, 0); // Set as GPIO9 and used as DAN28027 SS
+    //    GPIO_SetupPinOptions(9, GPIO_OUTPUT, GPIO_PUSHPULL); // Make GPIO9 an Output Pin
+    //    GpioDataRegs.GPASET.bit.GPIO9 = 1; //Initially Set GPIO9/SS High so DAN28027 is not selected
+    //
+    //    GPIO_SetupPinMux(66, GPIO_MUX_CPU1, 0); // Set as GPIO66 and used as MPU-9250 SS
+    //    GPIO_SetupPinOptions(66, GPIO_OUTPUT, GPIO_PUSHPULL); // Make GPIO66 an Output Pin
+    //    GpioDataRegs.GPCSET.bit.GPIO66 = 1; //Initially Set GPIO66/SS High so MPU-9250 is not selected
+    //
+    //    GPIO_SetupPinMux(63, GPIO_MUX_CPU1, 15); //Set GPIO63 pin to SPISIMOB //pks11/ ex1 // mux selection
+    //    GPIO_SetupPinMux(64, GPIO_MUX_CPU1, 15); //Set GPIO64 pin to SPISOMIB //pks11/ ex1 // mux selection
+    //    GPIO_SetupPinMux(65, GPIO_MUX_CPU1, 15); //Set GPIO65 pin to SPICLKB //pks11/ ex1 // mux selection
+    //
+    //
+    //    EALLOW;
+    //    GpioCtrlRegs.GPBPUD.bit.GPIO63 = 0; // Enable Pull-ups on SPI PINs Recommended by TI for SPI Pins
+    //    GpioCtrlRegs.GPCPUD.bit.GPIO64 = 0;
+    //    GpioCtrlRegs.GPCPUD.bit.GPIO65 = 0;
+    //    GpioCtrlRegs.GPBQSEL2.bit.GPIO63 = 3; // Set I/O pin to asynchronous mode recommended for SPI
+    //    GpioCtrlRegs.GPCQSEL1.bit.GPIO64 = 3; // Set I/O pin to asynchronous mode recommended for SPI
+    //    GpioCtrlRegs.GPCQSEL1.bit.GPIO65 = 3; // Set I/O pin to asynchronous mode recommended for SPI
+    //    EDIS;
+    //
+    //    // ---------------------------------------------------------------------------
+    //    SpibRegs.SPICCR.bit.SPISWRESET = 0; // Put SPI in Reset //pks11 // ex1 // reseting spi because we need to configure
+    //
+    //    SpibRegs.SPICTL.bit.CLK_PHASE = 1; //This happens to be the mode for both the DAN28027 and
+    //    SpibRegs.SPICCR.bit.CLKPOLARITY = 0; //The MPU-9250, Mode 01.
+    //    SpibRegs.SPICTL.bit.MASTER_SLAVE = 1; // Set to SPI Master // pks11 // ex1// according to guide, if we are in reset configuration this SPI network become slave hence we need to set up high to create masters
+    //    SpibRegs.SPICCR.bit.SPICHAR = 15; // Set to transmit and receive 16-bits each write to SPITXBUF //pks11// ex1 // we need to shift 16 bits together and hence SPICHAR will be Fh (15 in decimal)
+    //    SpibRegs.SPICTL.bit.TALK = 1; // Enable transmission //pks11 // ex1// enabling master transmission
+    //    SpibRegs.SPIPRI.bit.FREE = 1; // Free run, continue SPI operation
+    //    SpibRegs.SPICTL.bit.SPIINTENA = 0; // Disables the SPI interrupt //pks11 //ex1 // disabling SPI interrupt
+    //
+    //    SpibRegs.SPIBRR.bit.SPI_BIT_RATE = 49; // Set SCLK bit rate to 1 MHz so 1us period. SPI base clock is
+    //    // 50MHZ. And this setting divides that base clock to create SCLK’s period //pks11 //ex1 // SPI Baud Rate = SPCLK / (SPIBRR + 1), SPIBRR = 49
+    //    SpibRegs.SPISTS.all = 0x0000; // Clear status flags just in case they are set for some reason
+    //
+    //    SpibRegs.SPIFFTX.bit.SPIRST = 1;// Pull SPI FIFO out of reset, SPI FIFO can resume transmit or receive. //PKS11 //ex1// taking out FIFO from rest configuration
+    //    SpibRegs.SPIFFTX.bit.SPIFFENA = 1; // Enable SPI FIFO enhancements // pks11// ex1// enabling the enhancement
+    //    SpibRegs.SPIFFTX.bit.TXFIFO = 0; // Write 0 to reset the FIFO pointer to zero, and hold in reset
+    //    SpibRegs.SPIFFTX.bit.TXFFINTCLR = 1; // Write 1 to clear SPIFFTX[TXFFINT] flag just in case it is set
+    //
+    //    SpibRegs.SPIFFRX.bit.RXFIFORESET = 0; // Write 0 to reset the FIFO pointer to zero, and hold in reset
+    //    SpibRegs.SPIFFRX.bit.RXFFOVFCLR = 1; // Write 1 to clear SPIFFRX[RXFFOVF] just in case it is set
+    //    SpibRegs.SPIFFRX.bit.RXFFINTCLR = 1; // Write 1 to clear SPIFFRX[RXFFINT] flag just in case it is set //pks11 //ex1
+    //    SpibRegs.SPIFFRX.bit.RXFFIENA = 1; // Enable the RX FIFO Interrupt. RXFFST >= RXFFIL //pks11 //ex1
+    //
+    //    SpibRegs.SPIFFCT.bit.TXDLY = 16; //Set delay between transmits to 16 spi clocks. Needed by DAN28027 chip //pks11// ex1// the delay has nothing to do with data transfer bits, that is requirement of DAN's chip
+    //
+    //    SpibRegs.SPICCR.bit.SPISWRESET = 1; // Pull the SPI out of reset //pks11 //ex1// taking out from the rest configuration
+    //
+    //    SpibRegs.SPIFFTX.bit.TXFIFO = 1; // Release transmit FIFO from reset. //pks11 //ex1 // taking out the transmission from the rest
+    //    SpibRegs.SPIFFRX.bit.RXFIFORESET = 1; // Re-enable receive FIFO operation
+    //    SpibRegs.SPICTL.bit.SPIINTENA = 1; // Enables SPI interrupt. !! I don’t think this is needed. Need to Test
+    //
+    //    SpibRegs.SPIFFRX.bit.RXFFIL = 16; //Interrupt Level to 16 words or more received into FIFO causes interrupt. This is just the initial setting for the register. Will be changed below //pks11 //ex1
+
+
+
 
     // Enable CPU int1 which is connected to CPU-Timer 0, CPU int13
     // which is connected to CPU-Timer 1, and CPU int 14, which is connected
@@ -676,7 +736,17 @@ void main(void)
     while(1)
     {
         if (UARTPrint == 1 ) {
+            //serial_printf(&SerialA,"Num Timer2:%ld Num SerialRX: %ld\r\n",CpuTimer2.InterruptCount,numRXA);
+            //serial_printf(&SerialA,"adc_volt1:%.3f adv_volt2: %.3f\r\n",adc_volt1,adc_volt2); //pks11 // ex2
+            //serial_printf(&SerialA,"Accel_X :%.3f Accel_Y: %.3f Accel_Z: %.3f Gyro_X : %.3f Gyro_Y : %.3f Gyro_Z : %.3f\r\n",Accel_X,Accel_Y,Accel_Z,Gyro_X,Gyro_Y,Gyro_Z);
+
+            //pks11 //ex1 // lab6
+            //            serial_printf(&SerialA,"Leftwheel enc (radians):%.6f Rightwheel enc (radians): %.6f\r\n",LeftWheel,RightWheel);
+            //            serial_printf(&SerialA,"Leftwheel velocity (foot/s):%.6f RightWheel velocity (foot/s): %.6f\r\n", VLeftK, VRightK);
+            //
+            //serial_printf(&SerialA,"adc0volt:%.6f adc1volt: %.6f accelz: %.6f gyrox : %.6f LeftWheelAng: %.6f RightWheelAng : %.6f\r\n", adc0Volt, adc1Volt,accelz, gyrox,LeftWheel_New, RightWheel_New);
             serial_printf(&SerialA,"tilt_value:%.3f gyro_value: %.3f LeftWheel: %.3f RightWheel : %.3f \r\n", tilt_value, gyro_value,LeftWheel, RightWheel);
+            serial_printf(&SerialA,"Three distance readings: %f, %f, %f \r\n",dist_IR_ADCINA2, dist_IR_ADCINA3, dist_IR_ADCINA4);
             UARTPrint = 0;
         }
     }
@@ -697,25 +767,56 @@ __interrupt void SWI_isr(void) {
     //pks11// lab6// ex5
     if (NewLVData == 1) {
         NewLVData = 0;
-        x_nav = fromLVvalues[0];
-        y_nav = fromLVvalues[1];
-        left_obs_det = fromLVvalues[2];
-        center_obs_det = fromLVvalues[3];
-        right_obs_det = fromLVvalues[4];
+
+        //refV = fromLVvalues[0];
+        //turnref = fromLVvalues[1];
+        accelzBalancePoint = fromLVvalues[2];
+        printLV4 = fromLVvalues[3];
+        printLV5 = fromLVvalues[4];
         printLV6 = fromLVvalues[5];
         printLV7 = fromLVvalues[6];
         printLV8 = fromLVvalues[7];
     }
+    if(yk3 > left_turn_Stop_threshold) {
+        turnref = -1*Kp_right_wall*(ref_right_wall - yk4);   // KH & LJM: yk4 is the right IR sensor
+        refV = forward_velocity;
+    } else if (yk3 < left_turn_Stop_threshold) {
+        turnref = -1*Kp_front_wall*(3.1 - yk3);   //KH & LJM: yk3 is the middle IR sensor
+        refV = 0;                           //KH & LJM: Halt while turning away from the wall
+    }
+//    switch (right_wall_follow_state) {
+//    case 1:
+//        //Left Turn
+//        turnref = -1*Kp_front_wall*(3.1 - yk3);   //KH & LJM: yk3 is the middle IR sensor
+//        refV = 0;                           //KH & LJM: Halt while turning away from the wall
+//        if (yk3 > left_turn_Stop_threshold) {
+//            right_wall_follow_state = 2;
+//        }
+//        break;
+//    case 2:
+//        //Right Wall Follow
+//        turnref = -1*Kp_right_wall*(ref_right_wall - yk4);   // KH & LJM: yk4 is the right IR sensor
+//        refV = forward_velocity;
+//        if (yk3 < left_turn_Start_threshold) {
+//            right_wall_follow_state = 1;
+//        }
+//        break;
+////    case 3:
+////        Left Wall Follow
+////        turn = Kp_left_wall*(ref_left_wall - yk2);
+////        vref = forward_velocity;
+////        if ()
+//    }
 
     if((numSWIcalls%62) == 0) { // change to the counter variable of you selected 4ms. timer : //pks11 // ex5 We want to communicate at 248 ms
         DataToLabView.floatData[0] = xR_K;
         DataToLabView.floatData[1] = yR_K;
         DataToLabView.floatData[2] = phiR;
-        DataToLabView.floatData[3] = yk2;
-        DataToLabView.floatData[4] = yk3;
-        DataToLabView.floatData[5] = yk4;
-        DataToLabView.floatData[6] = alpha;
-        DataToLabView.floatData[7] = machine_state;
+        DataToLabView.floatData[3] = turnref;
+        DataToLabView.floatData[4] = right_wall_follow_state;
+        DataToLabView.floatData[5] = ubalturn;
+        DataToLabView.floatData[6] = turn_angle_K;
+        DataToLabView.floatData[7] = (float)numSWIcalls*5.0;
         LVsenddata[0] = '*'; // header for LVdata
         LVsenddata[1] = '$';
         for (int i=0;i<LVNUM_TOFROM_FLOATS*4;i++) {
@@ -728,7 +829,8 @@ __interrupt void SWI_isr(void) {
         serial_sendSCID(&SerialD, LVsenddata, 4*LVNUM_TOFROM_FLOATS + 2);
     }
 
-    // Balance Control
+    //pks11// ex6
+    //calculating x, y and pose of bearing
     RightWheel_K = RightWheel;
     LeftWheel_K = LeftWheel;
     phiR = (Rwh/Wr)*(RightWheel_K - LeftWheel_K);
@@ -737,70 +839,41 @@ __interrupt void SWI_isr(void) {
     xdot_K = Rwh*(thetaAvg_dot)*cos(phiR);
     ydot_K = Rwh*(thetaAvg_dot)*sin(phiR);
 
-    // Calculating current position
+    //writing trapezoidal rule
     xR_K = xR_K_1 + (0.5)*(xdot_K + xdot_K_1)*(0.004);
     yR_K = yR_K_1 + (0.5)*(ydot_K + ydot_K_1)*(0.004);
 
-    if (machine_state==3)
-    {
-        count_turn = 0;
-        // Sending the current position to calculate the next control inputs
-        target_near = xy_control(2.0 , xR_K, yR_K, x_nav, y_nav, phiR , 0.5, 0.75);
-        alpha_old = alpha;
-    }
 
-    alpha_turn_left = alpha_old + PI*(10.0/180.0);
-    alpha_turn_right = alpha_old - PI*(10.0/180.0);
-    // State Machine
-    switch (machine_state) {
-    case 1:
-        //Left Turn0
-        alpha = alpha_turn_left;   //KH & LJM: yk3 is the middle IR sensor
-        vref_forxy = 0.5; //KH & LJM: Halt while turning away from the wall
-        count_turn = count_turn + 1;
-        if (count_turn > 100)
-        {
-            if (yk4 > left_turn_Stop_threshold) {
-                machine_state = 3;
-            }
-        }
-        break;
-    case 2:
-        //Right Turn
-        alpha = alpha_turn_right;   // KH & LJM: yk4 is the right IR sensor
-        vref_forxy = 0.5;                           //KH & LJM: Halt while turning away from the wall
 
- = count_turn + 1;
-        if(count_turn > 100){
-            if (yk2 > right_turn_Stop_threshold) {
-                machine_state = 3;
-            }
-        }
-        break;
-    case 3:
-        // Navigation
-        if (yk4 < left_turn_Start_threshold)
-        {
-            machine_state = 1;
 
-        }
-        else if (yk2 < right_turn_Start_threshold)
-        {
-            machine_state = 2;
-        }
-        break;
-    }
 
+//    //pos update
+//    RightWheel_K_1 = RightWheel_K;
+//    LeftWheel_K_1 = LeftWheel_K;
+//    xdot_K_1 = xdot_K;
+//    ydot_K_1 = ydot_K;
+//    xR_K_1 = xR_K;
+//    yR_K_1 = yR_K;
+
+
+    // Insert SWI ISR Code here.......
+
+//    LeftWheel_K = LeftWheel;
+//    RightWheel_K = RightWheel;
     gyro_value_K = gyro_value;
 
     vel_Left_K = 0.6*(vel_Left_K_1) + 100*LeftWheel_K - 100*LeftWheel_K_1;
     vel_Right_K = 0.6*(vel_Right_K_1) + 100*RightWheel_K - 100*RightWheel_K_1;
     gyrorate_dot_K = 0.6*(gyrorate_dot_K_1) + 100*(gyro_value_K) - 100*(gyro_value_K_1);
 
-    // Balance Control law
+    //control law // ex3 //lab7
     ubal = -K1*tilt_value - K2*gyro_value_K - K3*(0.5)*(vel_Left_K + vel_Right_K) - K4*gyrorate_dot_K;
 
-    // State update for balance
+
+
+
+
+    //pks11// state update
     LeftWheel_K_1 = LeftWheel_K;
     RightWheel_K_1 = RightWheel_K;
     gyro_value_K_1 = gyro_value_K;
@@ -812,16 +885,20 @@ __interrupt void SWI_isr(void) {
     vel_Right_K_1 = vel_Right_K;
     gyrorate_dot_K_1 = gyrorate_dot_K;
 
-
-    // Turn Control
+    //pks11 //ex4
     WhlDiff = LeftWheel - RightWheel;
     WhlDiff_K = WhlDiff;
+    turn_angle_K = turn_angle;
+    turnref_K = turnref;
 
-    turn_angle_K = -1*alpha*Wr/Rwh;
+    //pks11 //turnangle
+    turn_angle_K = turn_angle_K_1 + (turnref_K + turnref_K_1)*0.002;
 
+    //velocity equation
     vel_WhlDiff_K = 0.3333*(vel_WhlDiff_K_1) + 166.667*(WhlDiff_K) - 166.667*(WhlDiff_K_1);
 
-    // Control Law for turn
+    //pks11 // ex4 // turn angle
+    //PID
     errorDiff = turn_angle_K - WhlDiff;
     errorDiff_K = errorDiff;
 
@@ -829,48 +906,78 @@ __interrupt void SWI_isr(void) {
     ubalturn = Kp_turn*(errorDiff_K) + Ki_turn*(intDiff_K) - Kd_turn*(vel_WhlDiff_K);
 
     if(ubalturn > 4){
+
         ubalturn = 4;
+
     }
 
     if(ubalturn < -4){
+
         ubalturn = -4;
+
     }
 
     if(ubalturn > 3){
+
+
         intDiff_K = intDiff_K_1;
     }
 
     if(ubalturn < -3){
+
+
         intDiff_K = intDiff_K_1;
     }
 
-
-    // Speed Control
     avgSpeed = (0.5)*(vel_Left_K + vel_Right_K);
-    errorSpeed = (vref_forxy/Rwh) - avgSpeed;
+    errorSpeed = refV - avgSpeed;
     errorSpeed_K = errorSpeed;
+
 
     intSpeed_K = intSpeed_K_1 + (errorSpeed_K + errorSpeed_K_1)*(0.002);
     forwardback_command = Kp_speed*(errorSpeed_K) + Ki_speed*(intSpeed_K);
 
     if(forwardback_command > 4){
+
         forwardback_command = 4;
+
     }
 
     if(forwardback_command < -4){
+
         forwardback_command = -4;
+
     }
 
     if(forwardback_command > 3){
+
+
         intSpeed_K = intSpeed_K_1;
     }
 
     if(forwardback_command < -3){
+
+
         intSpeed_K = intSpeed_K_1;
     }
 
 
-    // state update wheel diff
+
+
+    uright_balturn = 0.5*ubal - ubalturn - forwardback_command;
+    uleft_balturn = 0.5*ubal + ubalturn - forwardback_command;
+
+
+
+
+
+
+
+
+
+
+
+    //pks11 // state updatewheel diff
     WhlDiff_K_1 = WhlDiff_K;
     vel_WhlDiff_K_1 = vel_WhlDiff_K;
     errorDiff_K_1 = errorDiff_K;
@@ -880,15 +987,17 @@ __interrupt void SWI_isr(void) {
     errorSpeed_K_1 = errorSpeed_K;
     intSpeed_K_1 = intSpeed_K;
 
-    // Complete control
-    uright_balturn = 0.5*ubal - ubalturn - forwardback_command;
-    uleft_balturn = 0.5*ubal + ubalturn - forwardback_command;
-
-    // Assigning the control to the two wheel
-    setEPWM2A(+1*uright_balturn);
+    setEPWM2A(1*uright_balturn);
     setEPWM2B(-1*uleft_balturn);
 
+
+
+
+
+
+
     numSWIcalls++;
+
     DINT;
 
 }
@@ -897,7 +1006,49 @@ __interrupt void SWI_isr(void) {
 __interrupt void cpu_timer0_isr(void)
 {
     CpuTimer0.InterruptCount++;
+
+    //pks11 //ex2
+    //this interrput is called at every 20ms, now, i order to print at every 100ms
+    // taking module by 5
+
+    //commented this out for ex3
+    //    if ((CpuTimer0.InterruptCount % 5) == 0) {
+    //        UARTPrint = 1;
+    //    }
+
+    //pks11 ex3 // I am running this interupt by 1ms and in order to print very 200 ms taking module by 200
+    //    if ((CpuTimer0.InterruptCount % 200) == 0)
+    //    {
+    //        UARTPrint = 1;
+    //    }
+
+
+    //pks11 //ex2 // increasig duty cycle of pwm by value 10
+    // if pwmvalue is greater than 3000 then start to reduce
+    //if pwmvalue is less than or equal to 0, then start to increase by 10
+    if(direction == 1)
+    {
+        pwmValue = pwmValue + 10;
+        if (pwmValue >= 3000)
+        {
+            direction = -1;
+        }
+    }
+
+    if(direction == -1)
+    {
+        pwmValue = pwmValue - 10;
+        if (pwmValue <=0)
+        {
+            direction = 1;
+        }
+    }
+
     numTimer0calls++;
+
+    //    if ((numTimer0calls%50) == 0) {
+    //        PieCtrlRegs.PIEIFR12.bit.INTx9 = 1;  // Manually cause the interrupt for the SWI
+    //    }
 
     if ((numTimer0calls%25) == 0) {
         displayLEDletter(LEDdisplaynum);
@@ -906,6 +1057,32 @@ __interrupt void cpu_timer0_isr(void)
             LEDdisplaynum = 0;
         }
     }
+
+    //    if ((numTimer0calls%50) == 0) {
+    //        // Blink LaunchPad Red LED
+    //        GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1;
+    //    }
+
+    //    //Clear GPIO9 Low to act as a Slave Select. Right now, just to scope. Later to select DAN28027 chip
+    //    GpioDataRegs.GPACLEAR.bit.GPIO9 = 1; //pks11// ex1 // clearing gpio9 to start the data transmission
+    //    //SpibRegs.SPIFFRX.bit.RXFFIL = 2; //pks11 // ex1 Issue the SPIB_RX_INT when two values are in the RX FIFO
+    //    //SpibRegs.SPITXBUF = 0x4A3B; // 0x4A3B and 0xB517 have no special meaning. Wanted to send
+    //    //SpibRegs.SPITXBUF = 0xB517; // something so you can see the pattern on the Oscilloscope
+    //
+    //    //pks11 // ex2
+    //    SpibRegs.SPIFFRX.bit.RXFFIL = 3; //pks11 // ex2// Issue the SPIB_RX_INT when three values are in the RX FIFO
+    //    SpibRegs.SPITXBUF = 0x00DA; //start command to MOSI
+    //    SpibRegs.SPITXBUF = pwmValue; //Sending 2 PWM values to DAN chip
+    //    SpibRegs.SPITXBUF = pwmValue;
+
+
+
+
+
+
+
+
+    // Acknowledge this interrupt to receive more interrupts from group 1
 
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
 }
@@ -917,6 +1094,156 @@ __interrupt void cpu_timer1_isr(void)
     CpuTimer1.InterruptCount++;
     numTimer1calls++;
 
+
+    //
+    //    //pks11// lab6// ex5
+    //    if (NewLVData == 1) {
+    //        NewLVData = 0;
+    //        Vref = fromLVvalues[0];
+    //        turn = fromLVvalues[1];
+    //        printLV3 = fromLVvalues[2];
+    //        printLV4 = fromLVvalues[3];
+    //        printLV5 = fromLVvalues[4];
+    //        printLV6 = fromLVvalues[5];
+    //        printLV7 = fromLVvalues[6];
+    //        printLV8 = fromLVvalues[7];
+    //    }
+    //
+    //    if((numTimer1calls%62) == 0) { // change to the counter variable of you selected 4ms. timer : //pks11 // ex5 We want to communicate at 248 ms
+    //        DataToLabView.floatData[0] = xR_K;
+    //        DataToLabView.floatData[1] = yR_K;
+    //        DataToLabView.floatData[2] = phiR;
+    //        DataToLabView.floatData[3] = 2.0*((float)numTimer1calls)*.001;
+    //        DataToLabView.floatData[4] = 3.0*((float)numTimer1calls)*.001;
+    //        DataToLabView.floatData[5] = (float)numTimer1calls;
+    //        DataToLabView.floatData[6] = (float)numTimer1calls*4.0;
+    //        DataToLabView.floatData[7] = (float)numTimer1calls*5.0;
+    //        LVsenddata[0] = '*'; // header for LVdata
+    //        LVsenddata[1] = '$';
+    //        for (int i=0;i<LVNUM_TOFROM_FLOATS*4;i++) {
+    //            if (i%2==0) {
+    //                LVsenddata[i+2] = DataToLabView.rawData[i/2] & 0xFF;
+    //            } else {
+    //                LVsenddata[i+2] = (DataToLabView.rawData[i/2]>>8) & 0xFF;
+    //            }
+    //        }
+    //        serial_sendSCID(&SerialD, LVsenddata, 4*LVNUM_TOFROM_FLOATS + 2);
+    //    }
+
+
+    //pks11 //lab6 // ex1
+//    Vref_Left = Vref;
+//    Vref_Right = Vref;
+    //assigning or reading radians value from readENCLeft and readEncRight
+    //pks11, commenting out from lab7 for ex2 pks11
+    //    LeftWheel = readEncLeft();
+    //    RightWheel = readEncRight();
+
+    //Left Distance
+//    LeftWheel_Dist = LeftRadius_final * LeftWheel;
+//    RightWheel_Dist = RightRadius_final * RightWheel;
+
+
+
+    //pks11 //calculating radius
+    //1 foot = radius *theta;
+    //LeftRadius = 1 / LeftWheel;
+    //RightRadius = 1 / RightWheel;
+
+    //    LeftWheel_update = LeftWheel % (2*3.14);
+    //    RightWheel_update = RightWheel % (2*3.14);
+
+    //Updating exisitng location
+//    PosLeft_K = LeftWheel_Dist;
+//    PosRight_K = RightWheel_Dist;
+
+    //    PosLeft_K = PosLeft_K_1 + LeftWheel_update * LeftRadius_final;
+    //    PosRight_K = PosRight_K_1 + RightWheel_update * RightRadius_final;
+
+    //calculating velocity at each time steps
+//    VLeftK = (PosLeft_K - PosLeft_K_1)/0.004;
+//    VRightK = (PosRight_K - PosRight_K_1)/ 0.004;
+
+    //Calculate the turn error
+//    eK_turn = turn + (VLeftK - VRightK);
+
+
+    //Design a controller
+//    eK_Left  = Vref_Left - VLeftK - Kpturn*eK_turn ;
+//    eK_Right = Vref_Right - VRightK + Kpturn*eK_turn;
+//
+//    IK_Left = IK_1_Left + (0.004*(eK_Left + eK_Left_1))/2;
+//    IK_Right = IK_1_Right + (0.004*(eK_Right + eK_Right_1)/2);
+//
+//    uLeft = Kp*eK_Left + Ki*IK_Left;
+//    uRight = Kp*eK_Right + Ki*IK_Right;
+
+    //Designing an AntiWindup Controller
+    //Note : I am not resetting, I am just holding the integrator
+//    if(uLeft > 10 || uLeft < -10)
+//    {
+//        IK_Left = IK_1_Left;
+//
+//    }
+//
+//
+//    if(uRight > 10 || uRight < -10)
+//    {
+//        IK_Right = IK_1_Right;
+//    }
+
+
+
+    //Updating POS
+//    PosLeft_K_1 = PosLeft_K;
+//    PosRight_K_1 = PosRight_K;
+//    eK_Left_1 = eK_Left;
+//    eK_Right_1  = eK_Right;
+//    IK_1_Left = IK_Left;
+//    IK_1_Right = IK_Right;
+//
+
+//    //pks11// ex6
+//    //calculating x, y and pose of bearing
+//    RightWheel_K = RightWheel;
+//    LeftWheel_K = LeftWheel;
+//    phiR = (Rwh/Wr)*(RightWheel_K - LeftWheel_K);
+//    thetaAvg = 0.5*(RightWheel_K + LeftWheel_K);
+//    thetaAvg_dot = 0.5*((RightWheel_K - RightWheel_K_1) + (LeftWheel_K - LeftWheel_K_1))*250;
+//    xdot_K = Rwh*(thetaAvg_dot)*cos(phiR);
+//    ydot_K = Rwh*(thetaAvg_dot)*sin(phiR);
+//
+//    //writing trapezoidal rule
+//    xR_K = xR_K_1 + (0.5)*(xdot_K + xdot_K_1)*(0.004);
+//    yR_K = yR_K_1 + (0.5)*(ydot_K + ydot_K_1)*(0.004);
+//
+//
+//
+//
+//
+//    //pos update
+//    RightWheel_K_1 = RightWheel_K;
+//    LeftWheel_K_1 = LeftWheel_K;
+//    xdot_K_1 = xdot_K;
+//    ydot_K_1 = ydot_K;
+//    xR_K_1 = xR_K;
+//    yR_K_1 = yR_K;
+
+
+    //giving the control input // changing uRight to uLeft as uLeft is associated t EPWM2B
+    //Also, I need to negate the uLeft inorder it to go to positive direction
+    //    setEPWM2A(uRight);
+    //    setEPWM2B(-1 * uLeft);
+
+    //    if ((CpuTimer0.InterruptCount % 100) == 0)
+    //    {
+    //        UARTPrint = 1;
+    //    }
+
+
+
+
+
 }
 
 // cpu_timer2_isr CPU Timer2 ISR
@@ -926,12 +1253,29 @@ __interrupt void cpu_timer2_isr(void)
     //GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1;
 
     CpuTimer2.InterruptCount++;
+
+    //pks11 //ex2 // commenting out this interrupt for UARTPrint!
+    // if ((CpuTimer2.InterruptCount % 10) == 0) {
+    //   UARTPrint = 1;
+    //}
 }
 
-// SPI interrupt
+//pks11 //ex1 // spi interrupt
 __interrupt void SPIB_isr(void)
 {
-    countSPIB_ISR++;
+    countSPIB_ISR ++;
+    //    spivalue1 = SpibRegs.SPIRXBUF; // Read first 16-bit value off RX FIFO. Probably is zero since no chip //pks11 // Not sure about this
+    //    spivalue2 = SpibRegs.SPIRXBUF; // Read second 16-bit value off RX FIFO. first ADC value associated to pwmvalue
+    //    spivalue3 = SpibRegs.SPIRXBUF; // Read third 16-bit value off RX FIFO, Second ADC value associated to pwmvalue
+    //
+    //    //pks11 //ex2 // these values are coming from ADCs, (Digital value varing from 0 - 4095) , changing this to voltage
+    //    adc_volt1 =  (3.3/4096) * spivalue2;
+    //    adc_volt2 =  (3.3/4096) * spivalue3;
+    //
+    //
+    //
+    //    GpioDataRegs.GPASET.bit.GPIO9 = 1; // Set GPIO9 high to end Slave Select. Now Scope. Later to deselect DAN28027 //pks11 //ex1
+    //    // Later when actually communicating with the DAN28027 do something with the data. Now do nothing.
 
     dummy = SpibRegs.SPIRXBUF; // Read first receive value which is not useful for us as  they are related to INIT_Status
     Accel_X_Raw = SpibRegs.SPIRXBUF; // Accelerometer X data
@@ -969,17 +1313,13 @@ __interrupt void SPIB_isr(void)
     //    setEPWM2A(uRight);
     //    setEPWM2B(-1*uLeft);
 
-    if(calibration_state == 0)
-    {
+    if(calibration_state == 0){
         calibration_count++;
-        if (calibration_count == 2000)
-        {
+        if (calibration_count == 2000) {
             calibration_state = 1;
             calibration_count = 0;
         }
-    }
-    else if(calibration_state == 1)
-    {
+    } else if(calibration_state == 1){
         accelx_offset+=accelx;
         accely_offset+=accely;
         accelz_offset+=accelz;
@@ -987,8 +1327,7 @@ __interrupt void SPIB_isr(void)
         gyroy_offset+=gyroy;
         gyroz_offset+=gyroz;
         calibration_count++;
-        if (calibration_count == 2000)
-        {
+        if (calibration_count == 2000) {
             calibration_state = 2;
             accelx_offset/=2000.0;
             accely_offset/=2000.0;
@@ -999,9 +1338,7 @@ __interrupt void SPIB_isr(void)
             calibration_count = 0;
             doneCal = 1;
         }
-    }
-    else if(calibration_state == 2)
-    {
+    } else if(calibration_state == 2){
         accelx -=(accelx_offset);
         accely -=(accely_offset);
         accelz -=(accelz_offset-accelzBalancePoint);
@@ -1027,8 +1364,7 @@ __interrupt void SPIB_isr(void)
         gyro_array[SpibNumCalls] = tiltrate;
         LeftWheelArray[SpibNumCalls] = readEncLeft();
         RightWheelArray[SpibNumCalls] = readEncRight();
-        if (SpibNumCalls >= 3) // should never be greater than 3
-        {
+        if (SpibNumCalls >= 3) { // should never be greater than 3
             tilt_value = (tilt_array[0] + tilt_array[1] + tilt_array[2] + tilt_array[3])/4.0;
             gyro_value = (gyro_array[0] + gyro_array[1] + gyro_array[2] + gyro_array[3])/4.0;
             LeftWheel=(LeftWheelArray[0]+LeftWheelArray[1]+LeftWheelArray[2]+LeftWheelArray[3])/4.0;
@@ -1037,8 +1373,6 @@ __interrupt void SPIB_isr(void)
             PieCtrlRegs.PIEIFR12.bit.INTx9 = 1; // Manually cause the interrupt for the SWI
         }
     }
-
-
     timecount++;
     if((timecount%200) == 0)
     {
@@ -1046,7 +1380,14 @@ __interrupt void SPIB_isr(void)
             GpioDataRegs.GPATOGGLE.bit.GPIO31 = 1; // Blink Blue LED while calibrating
         }
         GpioDataRegs.GPBTOGGLE.bit.GPIO34 = 1; // Always Block Red LED
+        //UARTPrint = 1; // Tell While loop to print
     }
+    //    SpibRegs.SPIFFRX.bit.RXFFOVFCLR=1; // Clear Overflow flag
+    //    SpibRegs.SPIFFRX.bit.RXFFINTCLR=1; // Clear Interrupt flag
+    //    PieCtrlRegs.PIEACK.all = PIEACK_GROUP6;
+
+
+
 
     GpioDataRegs.GPCSET.bit.GPIO66 = 1; // Set GPIO66 high to end Slave Select.
 
@@ -1061,7 +1402,7 @@ __interrupt void SPIB_isr(void)
     }
 }
 
-// SPI setup
+//pks11 //ex3
 void setupSpib(void) //Call this function in main() somewhere after the DINT; line of code.
 {
     int16_t temp = 0;
@@ -1138,6 +1479,9 @@ void setupSpib(void) //Call this function in main() somewhere after the DINT; li
 
     // Perform the number of needed writes to SPITXBUF to write to all 13 registers. Remember we are sending
     // 16-bit transfers, so two registers at a time after the first 16-bit transfer.
+
+
+
 
     // To address 00x13 write 0x00
     SpibRegs.SPITXBUF = 0x1300;
@@ -1297,7 +1641,7 @@ void setupSpib(void) //Call this function in main() somewhere after the DINT; li
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP6;
 }
 
-// Motor encoder reading
+//pks11 // lab 6 // setting up function
 void init_eQEPs(void) {
     // setup eQEP1 pins for input
     EALLOW;
@@ -1342,7 +1686,9 @@ void init_eQEPs(void) {
     EQep2Regs.QEPCTL.bit.QPEN = 1; // Enable EQep
 }
 
-// Reading Left encoder value
+//pks11
+//reading left encoder value
+
 float readEncLeft(void) {
     int32_t raw = 0;
     uint32_t QEP_maxvalue = 0xFFFFFFFFU; //4294967295U
@@ -1350,10 +1696,15 @@ float readEncLeft(void) {
     if (raw >= QEP_maxvalue/2) raw -= QEP_maxvalue; // I don't think this is needed and never true
     // 100 slits in the encoder disk so 100 square waves per one revolution of the
     // DC motor's back shaft. Then Quadrature Decoder mode multiplies this by 4 so 400 counts per one rev
+    //pks11 lab 6
+    // of the DC motor's back shaft. Then the gear motor's gear ratio is 30:1.
+    // logic behind this calculation : 30 revolution is equivalent to 2pi radians, 1 revalution (400 counts) is equivalent to (2*pi/30)
+    // 1 count is equivalent to (2*pi/30)/400 = pi/6000
+    //left wheel i giving negative value hence, factor pi/600 will be multiplied by -1
     return (raw*(-1*0.0005233));
 }
-
-// Reading Right encoder value
+//pks11
+//reading right encoder value
 float readEncRight(void) {
     int32_t raw = 0;
     uint32_t QEP_maxvalue = 0xFFFFFFFFU; //4294967295U -1 32bit signed int
@@ -1369,9 +1720,11 @@ float readEncRight(void) {
     return (raw*(0.0005233));
 }
 
-// Control Right wheel
+//pks11 // ex2 // lab6
+//copy & paste from lab3
 void setEPWM2A(float controleffort)
 {
+    //pks11
     //Saturating input parameter
     if (controleffort > 10.0)
     {
@@ -1382,14 +1735,15 @@ void setEPWM2A(float controleffort)
     {
         controleffort = -10;
     }
-
+    //pks11
+    //ex2
     //linear scaling to make sure 0% duty cycle is at controleffort -10, 50% dutycycle is at controleffort 0
     EPwm2Regs.CMPA.bit.CMPA = ((controleffort + 10.0)/(20.0))* (EPwm2Regs.TBPRD);
 }
 
-// Control Left wheel
 void setEPWM2B(float controleffort)
 {
+    //pks11
     //Saturating input parameter
     if (controleffort > 10)
     {
@@ -1400,15 +1754,14 @@ void setEPWM2B(float controleffort)
     {
         controleffort = -10;
     }
-
+    //pks11
+    //ex2
     //linear scaling to make sure 0% duty cycle is at controleffort -10, 50% dutycycle is at controleffort 0
     EPwm2Regs.CMPB.bit.CMPB = ((controleffort + 10.0)/(20.0))* (EPwm2Regs.TBPRD);
 }
 
-// ADCA interrupt acting as time trigger for reading SPI
 __interrupt void ADCA_ISR (void)
 {
-    // KL start : Wall Following
     yk2 = 0; //KH & LJM : Reset YK otherwise it will keep increasing
     yk3 = 0; //KH & LJM : Reset YK otherwise it will keep increasing
     yk4 = 0;
@@ -1450,9 +1803,8 @@ __interrupt void ADCA_ISR (void)
     yk3 = 3.1 - yk3;
     yk4 = 3.1 - yk4;
 
-    // KL end:
-
     count_ISR++;
+
     // Clear GPIO66 Low to act as a Slave Select
     GpioDataRegs.GPCCLEAR.bit.GPIO66 = 1; // pks11 // ex3 // clearing gpio66 to start the data transimission
     SpibRegs.SPIFFRX.bit.RXFFIL = 8; //pks11 // ex3 Issue the SPIB_RX_INT // Note we need to receive total 3 accelerometer and three gyro readings
@@ -1467,106 +1819,11 @@ __interrupt void ADCA_ISR (void)
     SpibRegs.SPITXBUF = 0X0000; // This will handle Gyro_Yout_H and Gyro_Yout_L
     SpibRegs.SPITXBUF = 0X0000; // This will handle Gyro_Zout_H and Gyro_Zout_L
 
+    //    if((count_ISR % 100) == 0)
+    //    {
+    //        UARTPrint = 1;
+    //    }
+
     AdcaRegs.ADCINTFLGCLR.bit.ADCINT1 = 1; //clear interrupt flag
     PieCtrlRegs.PIEACK.all = PIEACK_GROUP1;
-}
-
-// Calculation of turn angle
-float my_atanf(float dy, float dx)
-{
-    float ang = 0;
-
-    if (fabsf(dy) <= 0.001F) {
-        if (dx >= 0.0F) {
-            ang = 0.0F;
-        } else {
-            ang = PI;
-        }
-    } else if (fabsf(dx) <= 0.001F) {
-        if (dy > 0.0F) {
-            ang = HALFPI;
-        } else {
-            ang = -HALFPI;
-        }
-    } else {
-        ang = atan2f(dy,dx);
-    }
-    return ang;
-}
-
-// XY navigation control of segway
-int xy_control(float turn_thres, float x_pos,float y_pos,float x_desired,float y_desired,
-               float thetaabs,float target_radius,float target_radius_near)
-{
-    float dx = 0;
-    float dy = 0;
-    float dist = 0.0F;
-    float dir = 0;
-    float theta = 0;
-    int target_near = FALSE;
-
-    // calculate theta (current heading) between -PI and PI
-    if (thetaabs > PI) {
-        theta = thetaabs - 2.0*PI*floorf((thetaabs+PI)/(2.0*PI));
-    } else if (thetaabs < -PI) {
-        theta = thetaabs - 2.0*PI*ceilf((thetaabs-PI)/(2.0*PI));
-    } else {
-        theta = thetaabs;
-    }
-
-    dx = x_desired - x_pos;
-    dy = y_desired - y_pos;
-    dist = sqrtf( dx*dx + dy*dy );
-    dir = 1.0F;
-
-    // calculate alpha (trajectory angle) between -PI and PI
-    alpha = my_atanf(dy,dx);
-
-    // calculate turn error
-    turnerror = alpha - theta;
-
-    // check for shortest path
-    if (fabsf(turnerror + 2.0*PI) < fabsf(turnerror)) turnerror += 2.0*PI;
-    else if (fabsf(turnerror - 2.0*PI) < fabsf(turnerror)) turnerror -= 2.0*PI;
-
-    if (dist<target_radius)
-    {
-        vref_forxy = 0;
-        turnerror = 0;
-        return(TRUE);
-    }
-
-    if (dist < target_radius_near)
-    {
-        target_near = TRUE;
-        // Arrived to the target's (X,Y)
-        // if we overshot target, we must change direction. This can cause the robot to bounce back and forth when
-        // remaining at a point.
-        if (fabsf(turnerror) > HALFPI)
-        {
-            vref_forxy = 0;
-            return(TRUE);
-        }
-        vref_forxy = 0.25*dir*min_val(dist,1);
-    }
-    else
-    {
-        target_near = FALSE;
-    }
-
-    if (fabsf(turnerror) > turn_thres) {
-        vref_forxy = 0;
-        return(TRUE);
-    }
-
-    // vref is 1 tile/sec; but slower when close to target.
-    vref_forxy = 0.5*dir*min_val(dist,1);
-
-    return(target_near);
-}
-
-float min_val(float a, float b)
-{
-    if (a>b) return b;
-    return a;
 }
