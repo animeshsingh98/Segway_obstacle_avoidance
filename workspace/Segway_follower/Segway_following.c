@@ -131,6 +131,7 @@ float printLV5 = 0;
 float printLV6 = 0;
 float printLV7 = 0;
 float printLV8 = 0;
+float mode = 0;
 float x = 0;
 float y = 0;
 float bearing = 0;
@@ -272,6 +273,7 @@ float right_count = 0;
 float left_count = 0;
 float delay_count = 0;
 
+
 // KH & LJM: Initialization of variables for Right Wall Following
 int16_t right_wall_follow_state = 2; //By default, do the right wall follow which is case 2
 float c[SIZEOFARRAY]={   -2.3890045153263611e-03,    -3.3150057635348224e-03,    -4.6136191242627002e-03,    -4.1659855521681268e-03,    1.4477422497795286e-03, 1.5489414225159667e-02, 3.9247886844071371e-02, 7.0723964095458614e-02, 1.0453473887246176e-01, 1.3325672639406205e-01, 1.4978314227429904e-01, 1.4978314227429904e-01, 1.3325672639406205e-01, 1.0453473887246176e-01, 7.0723964095458614e-02, 3.9247886844071371e-02, 1.5489414225159667e-02, 1.4477422497795286e-03, -4.1659855521681268e-03,    -4.6136191242627002e-03,    -3.3150057635348224e-03,    -2.3890045153263611e-03};
@@ -305,6 +307,19 @@ float left_turn_Start_threshold = 2.0;
 float left_turn_Stop_threshold = 2.3;
 float alpha_K_1 = 0;
 
+
+// Follow Human
+uint16_t follow_machine_state = 0;
+uint16_t count_follow1 = 0;
+float distance_ref = 2.2;
+float Kp_follow = 2.5;
+float leftfollow_count = 0;
+float rightfollow_count = 0;
+float ref_sensor_diff = 0.1;
+float Kp_turnleft_follow = 4; //Kp_turnleft_follow = 3
+float Kp_turnright_follow = 4; // Kp_turnright_follow = 3
+float follow_count = 0;
+
 uint32_t ADCA_count = 0;
 void setDACA(float dacouta0) {
     int16_t DACOutInt = 0;
@@ -329,7 +344,7 @@ void setDACC(float dacouta2) {
 }
 
 void main(void)
-0{
+{
     // PLL, WatchDog, enable Peripheral Clocks
     // This example function is found in the F2837xD_SysCtrl.c file.
     InitSysCtrl();
@@ -705,14 +720,14 @@ __interrupt void SWI_isr(void) {
     //pks11// lab6// ex5
     if (NewLVData == 1) {
         NewLVData = 0;
-        //x_nav = fromLVvalues[0];
-        //y_nav = fromLVvalues[1];
-        printLV3 = fromLVvalues[2];
+        x_nav = fromLVvalues[0];
+        y_nav = fromLVvalues[1];
+        mode = fromLVvalues[2];
         printLV4 = fromLVvalues[3];
         printLV5 = fromLVvalues[4];
         printLV6 = fromLVvalues[5];
-        x_nav = fromLVvalues[6];
-        y_nav = fromLVvalues[7];
+        printLV7 = fromLVvalues[6];
+        printLV8 = fromLVvalues[7];
     }
 
     if((numSWIcalls%62) == 0) { // change to the counter variable of you selected 4ms. timer : //pks11 // ex5 We want to communicate at 248 ms
@@ -723,7 +738,7 @@ __interrupt void SWI_isr(void) {
         DataToLabView.floatData[4] = yk3;
         DataToLabView.floatData[5] = yk4;
         DataToLabView.floatData[6] = alpha;
-        DataToLabView.floatData[7] = machine_state;
+        DataToLabView.floatData[7] =  follow_machine_state;
         LVsenddata[0] = '*'; // header for LVdata
         LVsenddata[1] = '$';
         for (int i=0;i<LVNUM_TOFROM_FLOATS*4;i++) {
@@ -749,111 +764,224 @@ __interrupt void SWI_isr(void) {
     xR_K = xR_K_1 + (0.5)*(xdot_K + xdot_K_1)*(0.004);
     yR_K = yR_K_1 + (0.5)*(ydot_K + ydot_K_1)*(0.004);
 
-    if (machine_state==3)
+    if (mode == 1)
     {
-        count_turn = 0;
+        switch(follow_machine_state){
+        case 0:
+            vref_forxy = 0.0;
+            turnref = 1;   // KH & LJM: yk4 is the right IR sensor
+            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
 
-        // Sending the current position to calculate the next control inputs
-        target_near = xy_control(2.0 , xR_K, yR_K, x_nav, y_nav, phiR , 0.5, 0.75);
+            alpha_K_1 = alpha;
+            if(yk3 < 2.2){
+                count_follow1 ++;
+                if(count_follow1 >= 50)
+                    follow_machine_state = 1;
+            }
+            break;
+        case 1:  //move to follow
+            //alpha = 0;
+            vref_forxy = Kp_follow*-1*(distance_ref-yk3);
+            if (yk4 > distance_ref) // When right sensor sees no object then turn left
+            {
+                rightfollow_count++;
+                if (rightfollow_count >= 25){                // Ensuring constant distance reading instead of noise
+                    alpha_K_1 = alpha;
+                    follow_machine_state = 2;               // Then go to right_wall_following mode
+                    rightfollow_count = 0;
+                }
+
+            }
+            else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
+            {
+                leftfollow_count++;
+                if (leftfollow_count >= 25){                // Ensuring constant distance reading instead of noise
+                    alpha_K_1 = alpha;
+                    follow_machine_state = 3;           // Then go to left_wall_following_mode
+                    leftfollow_count = 0;
+                }
+            }
+
+            else if (yk3 > 2.5)
+            {
+                follow_count++;
+                if(follow_count > 25){
+
+                    follow_count = 0;
+                    follow_machine_state = 0;
+                }
+            }
+
+            break;
+        case 2: //leftturn to follow
+            turnref = Kp_turnleft_follow*(yk3-yk2-ref_sensor_diff);
+            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+            alpha_K_1 = alpha;
+            turnref_K_1 = turnref;
+
+            if(yk4 < 2.4)
+            {
+                rightfollow_count++;
+                if (rightfollow_count >= 25){                // Ensuring constant distance reading instead of noise
+                    alpha_K_1 = alpha;
+
+                    rightfollow_count = 0;
+                    follow_machine_state = 1;               // Then go to right_wall_following mode
+                }
+
+            }
+            else if (yk3 > 2.5)
+            {
+                follow_count++;
+                if(follow_count > 25){
+
+                    follow_count = 0;
+                    follow_machine_state = 0;
+                }
+            }
+            break;
+        case 3: //righttun to follow
+            turnref = Kp_turnright_follow*(yk3-yk4-ref_sensor_diff);
+            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+            alpha_K_1 = alpha;
+            turnref_K_1 = turnref;
+
+            if(yk2 < 2.4)
+            {
+                leftfollow_count++;
+                if (leftfollow_count >= 25){                // Ensuring constant distance reading instead of noise
+                    alpha_K_1 = alpha;
+
+                    leftfollow_count = 0;
+                    follow_machine_state = 1;               // Then go to right_wall_following mode
+                }
+
+            }
+            else if (yk3 > 2.5)
+            {
+                follow_count++;
+                if(follow_count > 25){
+
+                    follow_count = 0;
+                    follow_machine_state = 0;
+                }
+            }
+            break;
+
+
+
+        }
+
+    }
+    else
+    {
+        if (machine_state==3)
+        {
+            count_turn = 0;
+
+            // Sending the current position to calculate the next control inputs
+            target_near = xy_control(2.0 , xR_K, yR_K, x_nav, y_nav, phiR , 0.5, 0.75);
+        }
+
+        // State Machine
+        switch (machine_state) {
+        case 1: // Left_wall_following
+            if (yk3 > left_wall_Start_threshold){
+
+                // Turn towards the wall
+                turnref = -1*Kp_left_wall*(ref_left_wall - yk2);   // KH & LJM: yk4 is the right IR sensor
+                alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+                alpha_K_1 = alpha;
+                turnref_K_1 = turnref;
+                vref_forxy = forward_velocity;
+            } else if(yk3 < left_wall_Start_threshold) {
+                // Turn away from the wall
+                turnref = -1*Kp_left_front_wall*(3.1 - yk3);   //KH & LJM: yk3 is the middle IR sensor
+                alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+                alpha_K_1 = alpha;
+                turnref_K_1 = turnref;
+                vref_forxy = 0.0;                           //KH & LJM: Halt while turning away from the wall
+            }
+            //count_turn++;
+            if(yk2 > 2.8){
+                left_count = 0;                             // Resetting left_count to stop constant machine state 1
+                alpha = alpha - PI*15.0/180;
+                machine_state = 4;
+            }
+            break;
+        case 2: // Right_wall_following
+            if (yk3 > right_wall_Start_threshold){
+                // Turn towards the wall
+                turnref = Kp_right_wall*(ref_right_wall - yk4);   // KH & LJM: yk4 is the right IR sensor
+                alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+                alpha_K_1 = alpha;
+                turnref_K_1 = turnref;
+                vref_forxy = forward_velocity;
+            } else if (yk3 < right_wall_Start_threshold){
+                // Turn away from the wall
+                turnref = Kp_right_front_wall*(3.1 - yk3);   //KH & LJM: yk3 is the middle IR sensor
+                alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+                alpha_K_1 = alpha;
+                turnref_K_1 = turnref;
+                vref_forxy = 0.0;                           //KH & LJM: Halt while turning away from the wall
+
+            }
+            //count_turn++;
+            if(yk4 > 2.8){
+                right_count = 0;                            // Resetting right_count to stop constant machine state 2
+                alpha = alpha + PI*15.0/180;
+                machine_state = 4;
+
+            }
+            break;
+        case 3: // Navigation
+            if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
+            {
+                right_count++;
+                if (right_count == 25){                // Ensuring constant distance reading instead of noise
+                    alpha_K_1 = alpha;
+                    machine_state = 2;               // Then go to right_wall_following mode
+                }
+
+            }
+            else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
+            {
+                left_count++;
+                if (left_count == 25){                // Ensuring constant distance reading instead of noise
+                    alpha_K_1 = alpha;
+                    machine_state = 1;           // Then go to left_wall_following_mode
+                }
+            }
+            break;
+        case 4: // Delay and wall/position option
+            vref_forxy = 0.5;
+            if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
+            {
+                right_count++;
+                if (right_count == 60){                // Ensuring constant distance reading instead of noise
+                    alpha_K_1 = alpha;
+                    machine_state = 2;               // Then go to right_wall_following mode
+                }
+
+            }
+            else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
+            {
+                left_count++;
+                if (left_count == 60){                // Ensuring constant distance reading instead of noise
+                    alpha_K_1 = alpha;
+                    machine_state = 1;           // Then go to left_wall_following_mode
+                }
+            }
+            if(delay_count > 500){ //After 0.5 seconds
+                delay_count = 0;
+                right_count = 0;
+                left_count = 0;
+                machine_state = 3;
+            }
+            delay_count++;
+        }
     }
 
-    // State Machine
-    switch (machine_state) {
-    case 1: // Left_wall_following
-        if (yk3 > left_wall_Start_threshold){
-
-            // Turn towards the wall
-            turnref = -1*Kp_left_wall*(ref_left_wall - yk2);   // KH & LJM: yk4 is the right IR sensor
-            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
-            alpha_K_1 = alpha;
-            turnref_K_1 = turnref;
-            vref_forxy = forward_velocity;
-        } else if(yk3 < left_wall_Start_threshold) {
-            // Turn away from the wall
-            turnref = -1*Kp_left_front_wall*(3.1 - yk3);   //KH & LJM: yk3 is the middle IR sensor
-            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
-            alpha_K_1 = alpha;
-            turnref_K_1 = turnref;
-            vref_forxy = 0.0;                           //KH & LJM: Halt while turning away from the wall
-        }
-        //count_turn++;
-        if(yk2 > 2.8){
-            left_count = 0;                             // Resetting left_count to stop constant machine state 1
-            alpha = alpha - PI*15.0/180;
-            machine_state = 4;
-        }
-        break;
-    case 2: // Right_wall_following
-        if (yk3 > right_wall_Start_threshold){
-            // Turn towards the wall
-            turnref = Kp_right_wall*(ref_right_wall - yk4);   // KH & LJM: yk4 is the right IR sensor
-            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
-            alpha_K_1 = alpha;
-            turnref_K_1 = turnref;
-            vref_forxy = forward_velocity;
-        } else if (yk3 < right_wall_Start_threshold){
-            // Turn away from the wall
-            turnref = Kp_right_front_wall*(3.1 - yk3);   //KH & LJM: yk3 is the middle IR sensor
-            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
-            alpha_K_1 = alpha;
-            turnref_K_1 = turnref;
-            vref_forxy = 0.0;                           //KH & LJM: Halt while turning away from the wall
-
-        }
-        //count_turn++;
-        if(yk4 > 2.8){
-            right_count = 0;                            // Resetting right_count to stop constant machine state 2
-            alpha = alpha + PI*15.0/180;
-            machine_state = 4;
-
-        }
-        break;
-    case 3: // Navigation
-        if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
-        {
-            right_count++;
-            if (right_count == 25){                // Ensuring constant distance reading instead of noise
-                 alpha_K_1 = alpha;
-                machine_state = 2;               // Then go to right_wall_following mode
-            }
-
-        }
-        else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
-        {
-            left_count++;
-            if (left_count == 25){                // Ensuring constant distance reading instead of noise
-                alpha_K_1 = alpha;
-                machine_state = 1;           // Then go to left_wall_following_mode
-            }
-        }
-        break;
-    case 4: // Delay and wall/position option
-        vref_forxy = 0.5;
-        if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
-        {
-            right_count++;
-            if (right_count == 60){                // Ensuring constant distance reading instead of noise
-                 alpha_K_1 = alpha;
-                machine_state = 2;               // Then go to right_wall_following mode
-            }
-
-        }
-        else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
-        {
-            left_count++;
-            if (left_count == 60){                // Ensuring constant distance reading instead of noise
-                alpha_K_1 = alpha;
-                machine_state = 1;           // Then go to left_wall_following_mode
-            }
-        }
-        if(delay_count > 500){ //After 0.5 seconds
-           delay_count = 0;
-           right_count = 0;
-           left_count = 0;
-           machine_state = 3;
-        }
-        delay_count++;
-    }
 
     gyro_value_K = gyro_value;
 
