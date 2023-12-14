@@ -311,13 +311,13 @@ float alpha_K_1 = 0;
 // Follow Human
 uint16_t follow_machine_state = 0;
 uint16_t count_follow1 = 0;
-float distance_ref = 2.2;
-float Kp_follow = 2.5;
+float distance_ref = 2.1;
+float Kp_follow = 3.0;
 float leftfollow_count = 0;
 float rightfollow_count = 0;
 float ref_sensor_diff = 0.1;
-float Kp_turnleft_follow = 4; //Kp_turnleft_follow = 3
-float Kp_turnright_follow = 4; // Kp_turnright_follow = 3
+float Kp_turnleft_follow = 6; //Kp_turnleft_follow = 3
+float Kp_turnright_follow = 6; // Kp_turnright_follow = 3
 float follow_count = 0;
 
 uint32_t ADCA_count = 0;
@@ -802,7 +802,7 @@ __interrupt void SWI_isr(void) {
                 }
             }
 
-            else if (yk3 > 2.5)
+            else if (yk3 > 3.0)
             {
                 follow_count++;
                 if(follow_count > 25){
@@ -830,7 +830,7 @@ __interrupt void SWI_isr(void) {
                 }
 
             }
-            else if (yk3 > 2.5)
+            else if (yk3 > 3.0)
             {
                 follow_count++;
                 if(follow_count > 25){
@@ -857,7 +857,7 @@ __interrupt void SWI_isr(void) {
                 }
 
             }
-            else if (yk3 > 2.5)
+            else if (yk3 > 3.0)
             {
                 follow_count++;
                 if(follow_count > 25){
@@ -875,6 +875,12 @@ __interrupt void SWI_isr(void) {
     }
     else
     {
+        if (alpha > PI) {
+            theta = alpha - 2.0*PI*floorf((thetaabs+PI)/(2.0*PI));
+        } else if (alpha < -PI) {
+            theta = alpha - 2.0*PI*ceilf((thetaabs-PI)/(2.0*PI));
+        }
+
         if (machine_state==3)
         {
             count_turn = 0;
