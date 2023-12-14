@@ -323,21 +323,21 @@ float follow_count = 0;
 uint32_t ADCA_count = 0;
 void setDACA(float dacouta0) {
     int16_t DACOutInt = 0;
-    DACOutInt = dacouta0*(4095.0/3.1); // perform scaling of 0 – almost 3.1V to 0 - 4095
+    DACOutInt = dacouta0*(4095.0/3.1); // perform scaling of 0 ï¿½ almost 3.1V to 0 - 4095
     if (DACOutInt > 4095) DACOutInt = 4095;
     if (DACOutInt < 0) DACOutInt = 0;
     DacaRegs.DACVALS.bit.DACVALS = DACOutInt;
 }
 void setDACB(float dacouta1) {
     int16_t DACOutInt = 0;
-    DACOutInt = dacouta1*(4095.0/3.1); // perform scaling of 0 – almost 3.1V to 0 - 4095
+    DACOutInt = dacouta1*(4095.0/3.1); // perform scaling of 0 ï¿½ almost 3.1V to 0 - 4095
     if (DACOutInt > 4095) DACOutInt = 4095;
     if (DACOutInt < 0) DACOutInt = 0;
     DacbRegs.DACVALS.bit.DACVALS = DACOutInt;
 }
 void setDACC(float dacouta2) {
     int16_t DACOutInt = 0;
-    DACOutInt = dacouta2*(4095.0/3.1); // perform scaling of 0 – almost 3.1V to 0 - 4095
+    DACOutInt = dacouta2*(4095.0/3.1); // perform scaling of 0 ï¿½ almost 3.1V to 0 - 4095
     if (DACOutInt > 4095) DACOutInt = 4095;
     if (DACOutInt < 0) DACOutInt = 0;
     DaccRegs.DACVALS.bit.DACVALS = DACOutInt;
@@ -617,7 +617,7 @@ void main(void)
     EPwm5Regs.ETSEL.bit.SOCAEN = 0; // Disable SOC on A group
     EPwm5Regs.TBCTL.bit.CTRMODE = 3; // freeze counter
     EPwm5Regs.ETSEL.bit.SOCASEL = 2; // Select Event when counter equal to PRD //PKS11 // IT WILL BE 010 according to guide
-    EPwm5Regs.ETPS.bit.SOCAPRD = 1; // Generate pulse on 1st event (“pulse” is the same as “trigger”) //PKS11 // It will be 001 according to guide
+    EPwm5Regs.ETPS.bit.SOCAPRD = 1; // Generate pulse on 1st event (ï¿½pulseï¿½ is the same as ï¿½triggerï¿½) //PKS11 // It will be 001 according to guide
     EPwm5Regs.TBCTR = 0x0; // Clear counter
     EPwm5Regs.TBPHS.bit.TBPHS = 0x0000; // Phase is 0
     EPwm5Regs.TBCTL.bit.PHSEN = 0; // Disable phase loading
@@ -738,7 +738,7 @@ __interrupt void SWI_isr(void) {
         DataToLabView.floatData[4] = yk3;
         DataToLabView.floatData[5] = yk4;
         DataToLabView.floatData[6] = alpha;
-        DataToLabView.floatData[7] =  follow_machine_state;
+        DataToLabView.floatData[7] = machine_state;
         LVsenddata[0] = '*'; // header for LVdata
         LVsenddata[1] = '$';
         for (int i=0;i<LVNUM_TOFROM_FLOATS*4;i++) {
@@ -875,11 +875,6 @@ __interrupt void SWI_isr(void) {
     }
     else
     {
-        if (alpha > PI) {
-            theta = alpha - 2.0*PI*floorf((thetaabs+PI)/(2.0*PI));
-        } else if (alpha < -PI) {
-            theta = alpha - 2.0*PI*ceilf((thetaabs-PI)/(2.0*PI));
-        }
 
         if (machine_state==3)
         {
@@ -944,19 +939,27 @@ __interrupt void SWI_isr(void) {
             if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
             {
                 right_count++;
-                if (right_count == 25){                // Ensuring constant distance reading instead of noise
+                if (right_count >= 25){                // Ensuring constant distance reading instead of noise
                     alpha_K_1 = alpha;
                     machine_state = 2;               // Then go to right_wall_following mode
                 }
 
             }
+            else if (yk4>2.8)
+            {
+                right_count = 0;
+            }
             else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
             {
                 left_count++;
-                if (left_count == 25){                // Ensuring constant distance reading instead of noise
+                if (left_count >= 25){                // Ensuring constant distance reading instead of noise
                     alpha_K_1 = alpha;
                     machine_state = 1;           // Then go to left_wall_following_mode
                 }
+            }
+            else if (yk2>2.8)
+            {
+                left_count = 0;
             }
             break;
         case 4: // Delay and wall/position option
@@ -964,7 +967,7 @@ __interrupt void SWI_isr(void) {
             if (yk4 < 2.25) // When right sensor sees an object at distance less than left_wall_start_threshold
             {
                 right_count++;
-                if (right_count == 60){                // Ensuring constant distance reading instead of noise
+                if (right_count >= 60){                // Ensuring constant distance reading instead of noise
                     alpha_K_1 = alpha;
                     machine_state = 2;               // Then go to right_wall_following mode
                 }
@@ -973,7 +976,7 @@ __interrupt void SWI_isr(void) {
             else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
             {
                 left_count++;
-                if (left_count == 60){                // Ensuring constant distance reading instead of noise
+                if (left_count >= 60){                // Ensuring constant distance reading instead of noise
                     alpha_K_1 = alpha;
                     machine_state = 1;           // Then go to left_wall_following_mode
                 }
@@ -1269,7 +1272,7 @@ void setupSpib(void) //Call this function in main() somewhere after the DINT; li
     int16_t temp = 0;
     ////Step 1.
     //// cut and paste here all the SpibRegs initializations you found for part 3. Make sure the TXdelay in
-    ////between each transfer to 0. Also don’t forget to cut and paste the GPIO settings for GPIO9, 63, 64, 65,
+    ////between each transfer to 0. Also donï¿½t forget to cut and paste the GPIO settings for GPIO9, 63, 64, 65,
     ////66 which are also a part of the SPIB setup.
     GPIO_SetupPinMux(9, GPIO_MUX_CPU1, 0); // Set as GPIO9 and used as DAN28027 SS
     GPIO_SetupPinOptions(9, GPIO_OUTPUT, GPIO_PUSHPULL); // Make GPIO9 an Output Pin
@@ -1305,7 +1308,7 @@ void setupSpib(void) //Call this function in main() somewhere after the DINT; li
     SpibRegs.SPICTL.bit.SPIINTENA = 0; // Disables the SPI interrupt //pks11 //ex1 // disabling SPI interrupt
 
     SpibRegs.SPIBRR.bit.SPI_BIT_RATE = 49; // Set SCLK bit rate to 1 MHz so 1us period. SPI base clock is
-    // 50MHZ. And this setting divides that base clock to create SCLK’s period //pks11 //ex1 // SPI Baud Rate = SPCLK / (SPIBRR + 1), SPIBRR = 49
+    // 50MHZ. And this setting divides that base clock to create SCLKï¿½s period //pks11 //ex1 // SPI Baud Rate = SPCLK / (SPIBRR + 1), SPIBRR = 49
     SpibRegs.SPISTS.all = 0x0000; // Clear status flags just in case they are set for some reason
 
     SpibRegs.SPIFFTX.bit.SPIRST = 1;// Pull SPI FIFO out of reset, SPI FIFO can resume transmit or receive. //PKS11 //ex1// taking out FIFO from rest configuration
@@ -1324,7 +1327,7 @@ void setupSpib(void) //Call this function in main() somewhere after the DINT; li
 
     SpibRegs.SPIFFTX.bit.TXFIFO = 1; // Release transmit FIFO from reset. //pks11 //ex1 // taking out the transmission from the rest
     SpibRegs.SPIFFRX.bit.RXFIFORESET = 1; // Re-enable receive FIFO operation
-    SpibRegs.SPICTL.bit.SPIINTENA = 1; // Enables SPI interrupt. !! I don’t think this is needed. Need to Test
+    SpibRegs.SPICTL.bit.SPIINTENA = 1; // Enables SPI interrupt. !! I donï¿½t think this is needed. Need to Test
 
     SpibRegs.SPIFFRX.bit.RXFFIL = 16; //Interrupt Level to 16 words or more received into FIFO causes interrupt. This is just the initial setting for the register. Will be changed below //pks11 //ex1
 
