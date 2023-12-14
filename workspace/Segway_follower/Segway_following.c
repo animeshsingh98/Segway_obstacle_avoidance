@@ -767,7 +767,7 @@ __interrupt void SWI_isr(void) {
     if (mode == 1)
     {
         switch(follow_machine_state){
-        case 0:
+        case 0: // Searching state
             vref_forxy = 0.0;
             turnref = 1;   // KH & LJM: yk4 is the right IR sensor
             alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
@@ -782,22 +782,34 @@ __interrupt void SWI_isr(void) {
         case 1:  //move to follow
             //alpha = 0;
             vref_forxy = Kp_follow*-1*(distance_ref-yk3);
-            if (yk4 > distance_ref) // When right sensor sees no object then turn left
+            turnref = -1*Kp_turnleft_follow*(yk2-yk4);
+            alpha = alpha_K_1 + (turnref + turnref_K_1)*0.002;
+            alpha_K_1 = alpha;
+            turnref_K_1 = turnref;
+            if(vref_forxy >= 1.0) {
+                vref_forxy = 1.0;
+            }
+            if (vref_forxy <= -1.0) {
+                vref_forxy = -1.0;
+            }
+            if (yk4 < 2.25) //  When right sensor sees an object at distance less than 2.25
             {
                 rightfollow_count++;
                 if (rightfollow_count >= 25){                // Ensuring constant distance reading instead of noise
                     alpha_K_1 = alpha;
-                    follow_machine_state = 2;               // Then go to right_wall_following mode
+                    follow_machine_state = 2;               // Then go to right_turn to follow
+                    leftfollow_count = 0;
                     rightfollow_count = 0;
                 }
 
             }
-            else if (yk2 < 2.25)  // When left sensor sees an object at distance less than right_wall_start_threshold
+            else if (yk2 < 2.25)  // When left sensor sees an object at distance less than 2.25
             {
                 leftfollow_count++;
                 if (leftfollow_count >= 25){                // Ensuring constant distance reading instead of noise
                     alpha_K_1 = alpha;
-                    follow_machine_state = 3;           // Then go to left_wall_following_mode
+                    follow_machine_state = 3;           // Then go to left_turn to follow
+                    rightfollow_count = 0;
                     leftfollow_count = 0;
                 }
             }
@@ -826,7 +838,7 @@ __interrupt void SWI_isr(void) {
                     alpha_K_1 = alpha;
 
                     rightfollow_count = 0;
-                    follow_machine_state = 1;               // Then go to right_wall_following mode
+                    follow_machine_state = 1;               // Then go to move to follow state
                 }
 
             }
@@ -839,6 +851,8 @@ __interrupt void SWI_isr(void) {
                     follow_machine_state = 0;
                 }
             }
+
+
             break;
         case 3: //righttun to follow
             turnref = Kp_turnright_follow*(yk3-yk4-ref_sensor_diff);
@@ -867,9 +881,6 @@ __interrupt void SWI_isr(void) {
                 }
             }
             break;
-
-
-
         }
 
     }
